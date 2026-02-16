@@ -426,4 +426,7 @@
 | Phase 8: Polish | Not Started | 0% |
 | Phase 9: Testing | Not Started | 0% |
 
+## Deployment 
+- containerize and deploy
+
 **Last Updated**: 2026-02-15
