@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DoodleDash": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

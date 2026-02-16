@@ -1,0 +1,8 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/BE/DoodleDash/.vs/DoodleDash.slnx
+/BE/DoodleDash/DoodleDash/obj/Debug/net10.0
+/BE/DoodleDash/DoodleDash/bin/Debug/net10.0
+/BE/DoodleDash/DoodleDash/obj
