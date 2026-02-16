@@ -30,11 +30,12 @@
 |-------|-----------|
 | **Frontend** | React + RSBuild |
 | **Routing** | React Router v6 |
+| **HTTP Client** | Axios |
+| **Styling** | Tailwind CSS |
 | **Backend** | ASP.NET Core |
 | **Real-time** | SignalR (recommended) or Socket.io |
-| **State** | In-memory (ConcurrentDictionary) |
-| **Styling** | Tailwind CSS |
-| **HTTP Client** | Axios |
+| **State** | Postgres |
+
 
 ---
 
