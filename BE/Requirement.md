@@ -4,6 +4,7 @@ Functional Requirements:
 Design and implement a multiplier drawing and guessing game like skribble, which has below features
 Lobby and Player management
 A user (host) can create a private room with following configuration parameters
+A user will enter his/her name before should be able to create the room
 Maximum number of players allowed (MVP)
 Number of rounds (MVP)
 Custom words to choose from ( for now only custom words no on the fly words like skribble) (MVP)

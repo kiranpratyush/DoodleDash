@@ -42,13 +42,13 @@
 ## Phase 1: Project Setup & Foundation
 
 ### 1.1 Backend Setup
-- [ ] Create ASP.NET Core Web API project
+- [X] Create ASP.NET Core Web API project
 - [ ] Configure CORS for React client
 - [ ] Add SignalR support
 - [ ] Setup dependency injection container
 - [ ] Configure logging (Serilog recommended)
 - [ ] Create basic folder structure (Controllers, Hubs, Services, Models)
-- [ ] Add health check endpoint `/health`
+- [X] Add health check endpoint `/health`
 
 ### 1.2 Frontend Setup
 - [ ] Initialize React project with RSBuild
@@ -69,7 +69,7 @@
 ## Phase 2: Room Management Core
 
 ### 2.1 Room Domain Model
-- [ ] Create `Room` entity (Id, Code, HostId, MaxPlayers, CurrentPlayers, Status, Settings)
+- [ ] Create `Room` entity ()
 - [ ] Create `Player` entity (Id, Name, RoomId, IsHost, ConnectionId, Score)
 - [ ] Create `RoomSettings` value object (MaxPlayers, Rounds, CustomWords[], TimeLimit)
 - [ ] Define RoomStatus enum (Lobby, Playing, Finished)
