@@ -10,6 +10,7 @@ namespace DoodleDash.Models
     }
     public class GameRoom
     {
+        [Required]
         public required string HostId { get; set; }
 
         [Required]
@@ -24,7 +25,23 @@ namespace DoodleDash.Models
 
         public List<Player> Players { get; set; } = [];
 
+        public string? ActivePlayerId { get; set; }
+
         public bool IsExpired { get; set; } = false;
+    }
+
+    public class CreateRoomRequest
+    {
+        [Required]
+        public required string HostName { get; set; }
+
+        [Required]
+        public required string RoomName { get; set; }
+
+        [Required]
+        public required long MaxPlayerCount { get; set; }
+
+        public List<string> CustomWords { get; set; } = [];
     }
 
 }
