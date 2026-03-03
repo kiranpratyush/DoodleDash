@@ -26,11 +26,7 @@ namespace DoodleDash.Services
                 if (room.IsExpired || room.Players.Count >= room.MaxPlayerCount)
                     return false;
 
-                if (room.Players.Any(existing => existing.Id == p.Id))
-                    return false;
-
-                room.Players.Add(p);
-                return true;
+                return room.Players.TryAdd(p.Id, p);
             }
         }
         public GameRoom? CreateRoom(CreateRoomRequest roomRequest)

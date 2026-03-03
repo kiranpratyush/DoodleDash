@@ -22,7 +22,14 @@ namespace DoodleDash.Controllers
         {
             var gameRoom = roomMangager.GetGameRoom(roomCode);
             if (gameRoom == null) return Ok(null);
-            return Ok(new GameRoom { RoomCode = "xxx", RoomName = "Hello", HostId = "xxx", HostName = "pratyush", MaxPlayerCount = 30 });
+            return Ok(new GameRoom
+            {
+                RoomCode = gameRoom.RoomCode,
+                RoomName = gameRoom.RoomName,
+                HostId = gameRoom.HostId,
+                HostName = gameRoom.HostName,
+                MaxPlayerCount = gameRoom.MaxPlayerCount
+            });
         }
         [HttpPost()]
         [ProducesResponseType(StatusCodes.Status201Created, Description = "Room code", StatusCode = StatusCodes.Status201Created)]
