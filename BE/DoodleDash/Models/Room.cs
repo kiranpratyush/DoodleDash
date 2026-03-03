@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 
 namespace DoodleDash.Models
@@ -7,6 +8,9 @@ namespace DoodleDash.Models
         public required string Name { get; set; }
 
         public required string Id { get; set; }
+
+        public int Score { get; set; } = 0;
+
     }
     public class GameRoom
     {
@@ -23,7 +27,7 @@ namespace DoodleDash.Models
 
         public List<string> CustomWords { get; set; } = [];
 
-        public List<Player> Players { get; set; } = [];
+        public ConcurrentDictionary<string, Player> Players = new();
 
         public string? ActivePlayerId { get; set; }
 

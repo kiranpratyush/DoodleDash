@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using DoodleDash.Models;
+using DoodleDash.Utils;
 
 namespace DoodleDash.Services
 {
@@ -25,11 +26,7 @@ namespace DoodleDash.Services
                 if (room.IsExpired || room.Players.Count >= room.MaxPlayerCount)
                     return false;
 
-                if (room.Players.Any(existing => existing.Id == p.Id))
-                    return false;
-
-                room.Players.Add(p);
-                return true;
+                return room.Players.TryAdd(p.Id, p);
             }
         }
         public GameRoom? CreateRoom(CreateRoomRequest roomRequest)
@@ -38,8 +35,8 @@ namespace DoodleDash.Services
             int MAX_RETRY_COUNT = 3;
             while (retryCount < MAX_RETRY_COUNT)
             {
-                var roomCode = "xxxx";
-                var hostId = "xxxx";
+                var roomCode = CodeGenerator.Generate();
+                var hostId = Guid.NewGuid().ToString();
                 var room = new GameRoom
                 {
                     HostId = hostId,
