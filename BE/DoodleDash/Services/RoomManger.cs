@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using DoodleDash.Models;
+using DoodleDash.Utils;
 
 namespace DoodleDash.Services
 {
@@ -38,8 +39,8 @@ namespace DoodleDash.Services
             int MAX_RETRY_COUNT = 3;
             while (retryCount < MAX_RETRY_COUNT)
             {
-                var roomCode = "xxxx";
-                var hostId = "xxxx";
+                var roomCode = CodeGenerator.Generate();
+                var hostId = Guid.NewGuid().ToString();
                 var room = new GameRoom
                 {
                     HostId = hostId,
