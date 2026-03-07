@@ -1,5 +1,6 @@
 
 using DoodleDash.Hubs;
+using DoodleDash.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 builder.Services.AddHealthChecks();
+
+builder.Services.AddSingleton<IRoomManager, RoomManager>();
 
 if (builder.Environment.IsDevelopment())
 {

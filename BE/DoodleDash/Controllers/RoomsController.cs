@@ -10,7 +10,6 @@ namespace DoodleDash.Controllers
     {
         private readonly IRoomManager roomMangager;
 
-
         public RoomsController(IRoomManager _roomManager)
         {
             roomMangager = _roomManager;
