@@ -66,7 +66,7 @@ export function Canvas(prop: Props) {
     }, []);
 
     return (
-        <div ref={containerRef} className="h-[100%] bg-white rounded-xl shadow-inner bg-white overflow-hidden">
+        <div ref={containerRef} className="h-[100%] bg-white rounded-sm shadow-inner bg-white overflow-hidden">
             <canvas
                 ref={canvasRef}
                 onMouseDown={onMouseDown}
