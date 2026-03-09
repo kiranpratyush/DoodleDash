@@ -1,0 +1,56 @@
+name: doodledash
+
+services:
+
+  # ── .NET 10 backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      # Context is the BE folder one level above developmentEnv/
+      context: ..
+      dockerfile: developmentEnv/Dockerfile
+    volumes:
+      - ../BE:/workspace
+    working_dir: /workspace
+    ports:
+      - "5103:5103" # http
+      - "7029:7029" # https
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Bind to all interfaces so the port is reachable from outside the container.
+      - ASPNETCORE_URLS=http://+:5103
+    command: >
+      dotnet run
+        --project DoodleDash/DoodleDash.csproj
+        --launch-profile http
+
+  # ── Node.js frontend (rsbuild dev server) ─────────────────────────────────
+  frontend:
+    build:
+      # Context is the FE package folder; Dockerfile.frontend lives in developmentEnv/
+      context: ../FE/doodledash
+      dockerfile: ../../developmentEnv/Dockerfile.frontend
+    volumes:
+      - ../FE/doodledash:/workspace
+      # Keep node_modules from being hidden by the bind-mount above.
+      - fe_node_modules:/workspace/node_modules
+    working_dir: /workspace
+    ports:
+      - "4000:4000"
+    command: npx rsbuild dev --host 0.0.0.0
+
+  # ── opencode AI coding assistant ──────────────────────────────────────────
+  opencode:
+    build:
+      context: ..
+      dockerfile: developmentEnv/Dockerfile.opencode
+    volumes:
+      # Mount the full project root so opencode can read/edit BE and FE.
+      - ..:/workspace
+    working_dir: /workspace
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+volumes:
+  # Persists node_modules between container restarts (avoids re-install each up).
+  fe_node_modules:

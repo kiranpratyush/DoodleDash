@@ -7,5 +7,8 @@ export default defineConfig({
   html: {
     title: "Doodle dash free drawing and guessing game",
     favicon: "./public/icon.png"
+  },
+  server:{
+    port:4000
   }
 });

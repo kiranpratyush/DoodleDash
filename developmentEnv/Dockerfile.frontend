@@ -1,0 +1,18 @@
+FROM node:lts
+
+# The official node image ships a "node" user at UID/GID 1000,
+# which matches the host user — no extra useradd needed.
+
+WORKDIR /workspace
+RUN chown node:node /workspace
+
+# Pre-install dependencies into the image layer so they survive bind-mount overlays.
+COPY --chown=node:node package.json package-lock.json* ./
+RUN npm install
+
+USER node
+
+# rsbuild dev server port
+EXPOSE 4000
+
+CMD ["npx", "rsbuild", "dev", "--host", "0.0.0.0"]
