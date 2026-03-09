@@ -19,7 +19,7 @@ export function Guess() {
 
   return (
     <div className="h-full bg-gray-100 rounded-sm p-4 flex flex-col">
-      <h2 className="text-lg font-semibold text-gray-700 mb-4">Send you Guesses</h2>
+      <h2 className="text-lg font-semibold text-gray-700 mb-4">Send your guesses</h2>
       <div className="flex-1 overflow-y-auto space-y-2">
         <div className="bg-white p-2 rounded-sm text-sm text-gray-600">
           <span className="font-medium text-gray-800">Alex:</span> Hello!
