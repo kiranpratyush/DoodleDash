@@ -38,19 +38,6 @@ services:
       - "4000:4000"
     command: npx rsbuild dev --host 0.0.0.0
 
-  # ── opencode AI coding assistant ──────────────────────────────────────────
-  opencode:
-    build:
-      context: ..
-      dockerfile: developmentEnv/Dockerfile.opencode
-    volumes:
-      # Mount the full project root so opencode can read/edit BE and FE.
-      - ..:/workspace
-    working_dir: /workspace
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-
 volumes:
   # Persists node_modules between container restarts (avoids re-install each up).
   fe_node_modules:

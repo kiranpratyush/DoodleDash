@@ -5,11 +5,30 @@ import { Player } from './components /player';
 import { Guess } from './components /guess';
 import { GuessWord } from './components /guessWord';
 import { Timer } from './components /timer';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { type Pos, type DataPoint } from './types/pos';
+import { drawingHubService } from './services/drawingHubService';
+
 
 export default function App() {
   const [color, setColor] = useState('#000000');
   const [brushSize] = useState(3);
+
+  useEffect(() => {
+    drawingHubService.start();
+    return () => {
+      drawingHubService.stop();
+    }
+  }, [])
+
+  function sendDraw(prevPos: Pos, curPos: Pos) {
+    drawingHubService.sendDataPoints({ x0: prevPos.x, y0: prevPos.y, x1: curPos.x, y1: curPos.y, brushSize: brushSize, color: color })
+    console.log([prevPos.x, prevPos.y, curPos.x, curPos.y])
+  }
+  
+  function onReceiveDraw(callback: (point: DataPoint) => void) {
+    drawingHubService.onReceiveDataPoints(callback);
+  }
 
   return (
     <div className="flex flex-col gradient-bg">
@@ -25,7 +44,7 @@ export default function App() {
           <Player />
         </div>
         <div className="flex flex-col h-[80vh] rounded-sm flex-3">
-          <Canvas color={color} brushSize={brushSize} />
+          <Canvas color={color} brushSize={brushSize} isDrawingAllowed={true} throttleInMs={50} sendDraw={sendDraw} onReceiveDraw={onReceiveDraw} />
           <ColorPicker activeColor={color} setActiveColor={setColor} />
         </div>
         <div className="flex-1 max-h-[70%]">
