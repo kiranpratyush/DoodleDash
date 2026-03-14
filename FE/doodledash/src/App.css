@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+:root{
+  --gradient-bg:linear-gradient(to top, #37ecba 0%, #72afd3 100%);
+}
+
 body {
   margin: 0;
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
@@ -8,7 +12,7 @@ body {
 
 
 .gradient-bg {
-  background-image: linear-gradient(to top, #37ecba 0%, #72afd3 100%);
+  background-image: var(--gradient-bg)
 }
 
 #root {
