@@ -3,6 +3,7 @@ export interface Pos {
   y: number;
 }
 export interface DataPoint {
+  playerId: string;
   x0: number;
   y0: number;
   x1: number;

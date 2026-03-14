@@ -6,15 +6,15 @@ class DrawingHubService {
 
   constructor() {
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl('/doodleDash')  // Changed to match backend hub endpoint
+      .withUrl(`${import.meta.env.PUBLIC_HUB_URL}/doodleDash`)  // Changed to match backend hub endpoint
       .withAutomaticReconnect([0, 2000, 5000, 10000, 15000, 30000]) // Retry pattern with increasing delays
       .build();
-      
+
     // Set up reconnection handling
     this.connection.onreconnecting((error) => {
       console.warn("Connection lost, reconnecting...", error);
     });
-    
+
     this.connection.onreconnected(() => {
       console.log("Reconnected to hub");
     });
@@ -39,7 +39,7 @@ class DrawingHubService {
 
   async sendDataPoints(point: DataPoint) {
     // Changed method name to match backend's Draw method
-    await this.connection.invoke('Draw', point);
+    await this.connection.invoke('DrawBroadCast', point);
   }
 
   onReceiveDataPoints(callback: (point: DataPoint) => void) {

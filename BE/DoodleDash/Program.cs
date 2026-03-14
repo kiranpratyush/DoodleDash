@@ -21,7 +21,7 @@ if (builder.Environment.IsDevelopment())
         options.AddDefaultPolicy(
             builder =>
             {
-                builder.WithOrigins("http://localhost:3001").AllowAnyHeader()
+                builder.WithOrigins("http://localhost:4000").AllowAnyHeader()
                 .WithMethods("GET", "POST").AllowCredentials();
             }
         );

@@ -148,6 +148,12 @@ namespace DoodleDash.Hubs
             };
         }
 
+        public async Task DrawBroadCast(DrawAction action)
+        {
+            Console.WriteLine(action);
+            await Clients.All.SendAsync("ReceiveDraw", action);
+        }
+
         public async Task<DrawActionResult> Draw(DrawAction action)
         {
             var playerId = Context.Items["PlayerId"] as string;
