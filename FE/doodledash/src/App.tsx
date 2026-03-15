@@ -6,7 +6,7 @@ import GameConfig from './pages/GameConfig'
 export default function App() {
     return (
         <div className="gradient-bg h-full">
-            <Home />
+            <GameConfig />
         </div>
     )
 }
