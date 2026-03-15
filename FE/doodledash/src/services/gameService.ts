@@ -25,9 +25,6 @@ export async function startGame(
 ): Promise<CreateGameResponse> {
     const url = `${import.meta.env.PUBLIC_BASE_URL}/${import.meta.env.PUBLIC_ROOM_ENDPOINT}`
 
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000)
-
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -35,27 +32,16 @@ export async function startGame(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(gameRequest),
-            signal: controller.signal,
         })
-
-        clearTimeout(timeoutId)
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => null)
-            if (errorData?.errorMessage) {
-                return {
-                    isSuccess: false,
-                    error: {
-                        error: true,
-                        errorMessage: errorData.errorMessage,
-                    },
-                }
-            }
             return {
                 isSuccess: false,
                 error: {
                     error: true,
-                    errorMessage: 'Something went wrong',
+                    errorMessage:
+                        errorData.errorMessage || 'Something went wrong',
                 },
             }
         }
@@ -69,7 +55,6 @@ export async function startGame(
             },
         }
     } catch (error) {
-        clearTimeout(timeoutId)
         return handleCommonError(error)
     }
 }

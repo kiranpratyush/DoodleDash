@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
 import { useLocalInputs } from '../store/inputStore'
+import { useGameStore } from '../store/gameStore'
 import { startGame } from '../services/gameService'
 
 export default function GameConfig() {
@@ -29,6 +30,14 @@ export default function GameConfig() {
         setIsLoading(false)
 
         if (response.isSuccess) {
+            const playerName = localInputs.playerName || 'Host'
+            useGameStore
+                .getState()
+                .setRoomDetails(
+                    response.data.roomCode,
+                    response.data.playerId,
+                    playerName
+                )
             setCurrentScreen('ROOM')
         } else {
             setError(response.error.errorMessage)

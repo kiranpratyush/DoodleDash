@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace DoodleDash.Models
 {
@@ -22,8 +23,7 @@ namespace DoodleDash.Models
         [Required]
         public required string HostName { get; set; }
         public required string RoomCode { get; set; }
-        [Required]
-        public required string RoomName { get; set; }
+
         [Required]
         public required Int64 MaxPlayerCount { get; set; }
 
@@ -53,15 +53,26 @@ namespace DoodleDash.Models
     public class CreateRoomRequest
     {
         [Required]
-        public required string HostName { get; set; }
+        public required string PlayerName { get; set; }
 
         [Required]
-        public required string RoomName { get; set; }
+        public required int MaxAllowedPlayers { get; set; }
 
         [Required]
-        public required long MaxPlayerCount { get; set; }
+        public required long TotalRounds { get; set; }
 
+        [Required]
+        public required int DrawTimeSeconds { get; set; }
         public List<string> CustomWords { get; set; } = [];
+    }
+
+    public class CreateRoomResponse
+    {
+        [JsonPropertyName("playerId")]
+        public string PlayerId { get; set; } = "";
+
+        [JsonPropertyName("playerName")]
+        public string PlayerName { get; set; } = "";
     }
 
     public class JoinRoomResult

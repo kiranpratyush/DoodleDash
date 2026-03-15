@@ -40,21 +40,19 @@ namespace DoodleDash.Services
             {
                 var roomCode = CodeGenerator.Generate();
                 var hostId = Guid.NewGuid().ToString();
-                var words = roomRequest.CustomWords.Count > 0 
-                    ? roomRequest.CustomWords 
+                var words = roomRequest.CustomWords.Count > 0
+                    ? roomRequest.CustomWords
                     : DefaultWords.GetRandomWords(30);
                 var room = new GameRoom
                 {
                     HostId = hostId,
-                    HostName = roomRequest.HostName,
+                    HostName = roomRequest.PlayerName,
                     RoomCode = roomCode,
-                    RoomName = roomRequest.RoomName,
-                    MaxPlayerCount = roomRequest.MaxPlayerCount,
+                    MaxPlayerCount = roomRequest.MaxAllowedPlayers,
                     CustomWords = words,
                 };
                 if (rooms.TryAdd(roomCode, room)) return room;
                 retryCount++;
-
             }
             return null;
         }
