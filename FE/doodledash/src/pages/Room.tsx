@@ -46,7 +46,7 @@ export default function Room() {
                 <Timer initialTime={60} />
                 <GuessWord word="elephant" revealedIndices={[0, 3, 7]} />
             </div>
-            <div className="h-[100vh] flex pt-4 px-4 gap-4">
+            <div className="h-screen flex pt-4 px-4 gap-4">
                 <div className="flex-1 max-h-[70%]">
                     <Player />
                 </div>

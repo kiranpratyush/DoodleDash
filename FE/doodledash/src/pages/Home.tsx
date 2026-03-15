@@ -26,9 +26,6 @@ export default function Home() {
                     </div>
                     <div className="flex flex-col gap-3">
                         <DoodleDashButton size="l" label="Create Room" />
-                        <button className="p-4 bg-white border-2 border-emerald-400 text-emerald-600 rounded-sm cursor-pointer w-full font-medium hover:bg-emerald-50 transition-colors">
-                            Join Room
-                        </button>
                     </div>
                 </div>
             </div>
