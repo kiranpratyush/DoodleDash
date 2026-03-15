@@ -7,7 +7,7 @@ interface InputStore {
     setMaxPlayers: (max: number) => void
     setMaxRounds: (rounds: number) => void
     setDrawTime: (seconds: number) => void
-    setCustomWords: (words: string[]) => void
+    setCustomWords: (words: string) => void
     addCustomWord: (word: string) => void
     removeCustomWord: (index: number) => void
     resetInputs: () => void
@@ -44,10 +44,17 @@ export const useLocalInputs = create<InputStore>((set) => ({
             localInputs: { ...state.localInputs, drawTimeInSecond: seconds },
         })),
 
-    setCustomWords: (words) =>
+    setCustomWords: (wordsString: string) => {
         set((state) => ({
-            localInputs: { ...state.localInputs, customWords: words },
-        })),
+            localInputs: {
+                ...state.localInputs,
+                customWords: wordsString
+                    .split(',')
+                    .map((word) => word.trim())
+                    .filter((word) => word !== ''),
+            },
+        }))
+    },
 
     addCustomWord: (word) =>
         set((state) => ({

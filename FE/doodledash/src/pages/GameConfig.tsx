@@ -1,22 +1,38 @@
 import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
-
-const data = [
-    {
-        type: 'Players',
-        data: 8,
-    },
-    {
-        type: 'Rounds',
-        data: 3,
-    },
-    {
-        type: 'Draw Time (seconds)',
-        data: 20,
-    },
-]
+import { useLocalInputs } from '../store/inputStore'
 
 export default function GameConfig() {
+    const setMaxPlayers = useLocalInputs((state) => state.setMaxPlayers)
+    const setTotalRounds = useLocalInputs((state) => state.setMaxRounds)
+    const setDrawTime = useLocalInputs((state) => state.setDrawTime)
+    const setCustomWords = useLocalInputs((state) => state.setCustomWords)
+    const customWords = useLocalInputs((state) => state.localInputs.customWords)
+
+    const data = [
+        {
+            type: 'Max Allowed Players',
+            data: useLocalInputs((state) => state.localInputs.maxPlayers),
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                setMaxPlayers(parseInt(event.target.value))
+            },
+        },
+        {
+            type: 'Total Rounds',
+            data: useLocalInputs((state) => state.localInputs.maxRounds),
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                setTotalRounds(parseInt(event.target.value))
+            },
+        },
+        {
+            type: 'Draw Time (seconds)',
+            data: useLocalInputs((state) => state.localInputs.drawTimeInSecond),
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                setDrawTime(parseInt(event.target.value))
+            },
+        },
+    ]
+
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-lg p-8 rounded-lg shadow-xl">
@@ -33,7 +49,8 @@ export default function GameConfig() {
                                 <DoodleDashInput
                                     type="number"
                                     placeHolder=""
-                                    onInput={() => {}}
+                                    onChange={d.onChange}
+                                    value={d.data.toString()}
                                 />
                             </div>
                         )
@@ -45,9 +62,20 @@ export default function GameConfig() {
                         <textarea
                             className="h-32 w-full p-2 border-2 border-emerald-400 rounded-sm outline-emerald-600 resize-none text-lg"
                             placeholder="Enter words separated by commas..."
+                            onChange={(
+                                event: React.ChangeEvent<HTMLTextAreaElement>
+                            ) => {
+                                setCustomWords(event.target.value)
+                            }}
                         />
                     </div>
-                    <DoodleDashButton size="l" label="Start Game" />
+                    <DoodleDashButton
+                        size="l"
+                        label="Start Game"
+                        onClick={() => {
+                            console.log(customWords)
+                        }}
+                    />
                     <DoodleDashButton size="l" label="Invite" />
                 </div>
             </div>

@@ -1,7 +1,10 @@
 import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
+import { useLocalInputs } from '../store/inputStore'
 
 export default function Home() {
+    const playerName = useLocalInputs((state) => state.localInputs.playerName)
+    const setPlayerName = useLocalInputs((state) => state.setPlayerName)
     return (
         <div className="gradient-bg min-h-screen flex items-center justify-center p-4">
             <div className="bg-white/90 backdrop-blur-sm w-full max-w-md p-8 rounded-xl shadow-2xl">
@@ -21,7 +24,12 @@ export default function Home() {
                         <DoodleDashInput
                             placeHolder="Enter your name"
                             type="text"
-                            onInput={() => {}}
+                            onChange={(
+                                event: React.ChangeEvent<HTMLInputElement>
+                            ) => {
+                                setPlayerName(event.target.value)
+                            }}
+                            value={playerName}
                         />
                     </div>
                     <div className="flex flex-col gap-3">
