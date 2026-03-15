@@ -9,14 +9,30 @@ export default function GameConfig() {
     const setTotalRounds = useLocalInputs((state) => state.setMaxRounds)
     const setDrawTime = useLocalInputs((state) => state.setDrawTime)
     const setCustomWords = useLocalInputs((state) => state.setCustomWords)
-    const customWords = useLocalInputs((state) => state.localInputs.customWords)
+    const localInputs = useLocalInputs((state) => state.localInputs)
     const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
     const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleStartGameButton = async () => {
+        setError(null)
         setIsLoading(true)
-        await startGame(300)
-        setCurrentScreen('ROOM')
+
+        const response = await startGame({
+            playerName: localInputs.playerName || 'Host',
+            maxAllowedPlayers: localInputs.maxPlayers,
+            totalRounds: localInputs.maxRounds,
+            drawTimeSeconds: localInputs.drawTimeInSecond,
+            customWords: localInputs.customWords,
+        })
+
+        setIsLoading(false)
+
+        if (response.isSuccess) {
+            setCurrentScreen('ROOM')
+        } else {
+            setError(response.error.errorMessage)
+        }
     }
 
     const data = [
@@ -81,16 +97,15 @@ export default function GameConfig() {
                     </div>
                     <DoodleDashButton
                         size="l"
-                        label="Start Game"
+                        label={isLoading ? 'Starting...' : 'Start Game'}
                         onClick={handleStartGameButton}
-                        isLoading={isLoading}
-                        isLoadingLabel="Starting..."
                     />
-                    <DoodleDashButton
-                        size="l"
-                        label="Invite"
-                        isLoading={isLoading}
-                    />
+                    {error && (
+                        <p className="text-red-500 text-center text-sm">
+                            {error}
+                        </p>
+                    )}
+                    <DoodleDashButton size="l" label="Invite" />
                 </div>
             </div>
         </div>
