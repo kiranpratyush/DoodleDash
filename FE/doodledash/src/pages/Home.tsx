@@ -5,6 +5,14 @@ import { useLocalInputs } from '../store/inputStore'
 export default function Home() {
     const playerName = useLocalInputs((state) => state.localInputs.playerName)
     const setPlayerName = useLocalInputs((state) => state.setPlayerName)
+    const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
+
+    function handleButtonClicked() {
+        if (playerName?.length && playerName.length > 0) {
+            setCurrentScreen('GAMECONFIG')
+        }
+    }
+
     return (
         <div className="gradient-bg min-h-screen flex items-center justify-center p-4">
             <div className="bg-white/90 backdrop-blur-sm w-full max-w-md p-8 rounded-xl shadow-2xl">
@@ -33,7 +41,11 @@ export default function Home() {
                         />
                     </div>
                     <div className="flex flex-col gap-3">
-                        <DoodleDashButton size="l" label="Create Room" />
+                        <DoodleDashButton
+                            size="l"
+                            label="Create Room"
+                            onClick={handleButtonClicked}
+                        />
                     </div>
                 </div>
             </div>

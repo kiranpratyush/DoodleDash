@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
 import { useLocalInputs } from '../store/inputStore'
+import { startGame } from '../services/gameService'
 
 export default function GameConfig() {
     const setMaxPlayers = useLocalInputs((state) => state.setMaxPlayers)
@@ -8,6 +10,14 @@ export default function GameConfig() {
     const setDrawTime = useLocalInputs((state) => state.setDrawTime)
     const setCustomWords = useLocalInputs((state) => state.setCustomWords)
     const customWords = useLocalInputs((state) => state.localInputs.customWords)
+    const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
+    const [isLoading, setIsLoading] = useState(false)
+
+    const handleStartGameButton = async () => {
+        setIsLoading(true)
+        await startGame(300)
+        setCurrentScreen('ROOM')
+    }
 
     const data = [
         {
@@ -72,11 +82,15 @@ export default function GameConfig() {
                     <DoodleDashButton
                         size="l"
                         label="Start Game"
-                        onClick={() => {
-                            console.log(customWords)
-                        }}
+                        onClick={handleStartGameButton}
+                        isLoading={isLoading}
+                        isLoadingLabel="Starting..."
                     />
-                    <DoodleDashButton size="l" label="Invite" />
+                    <DoodleDashButton
+                        size="l"
+                        label="Invite"
+                        isLoading={isLoading}
+                    />
                 </div>
             </div>
         </div>

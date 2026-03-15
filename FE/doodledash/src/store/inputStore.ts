@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { type LocalInputs } from '../types/players'
+type currentScreen = 'HOME' | 'GAMECONFIG' | 'ROOM'
 
-interface InputStore {
+export interface InputStore {
     localInputs: LocalInputs
+    currentScreen: currentScreen
     setPlayerName: (name: string) => void
     setMaxPlayers: (max: number) => void
     setMaxRounds: (rounds: number) => void
@@ -11,6 +13,7 @@ interface InputStore {
     addCustomWord: (word: string) => void
     removeCustomWord: (index: number) => void
     resetInputs: () => void
+    setCurrentScreen: (screen: currentScreen) => void
 }
 
 const initialInputs: LocalInputs = {
@@ -23,6 +26,8 @@ const initialInputs: LocalInputs = {
 
 export const useLocalInputs = create<InputStore>((set) => ({
     localInputs: initialInputs,
+
+    currentScreen: 'HOME',
 
     setPlayerName: (name) =>
         set((state) => ({
@@ -75,4 +80,10 @@ export const useLocalInputs = create<InputStore>((set) => ({
         })),
 
     resetInputs: () => set({ localInputs: initialInputs }),
+
+    setCurrentScreen: (screenName: InputStore['currentScreen']) =>
+        set((state) => ({
+            localInputs: { ...state.localInputs },
+            currentScreen: screenName,
+        })),
 }))
