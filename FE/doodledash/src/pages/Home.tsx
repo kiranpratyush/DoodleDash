@@ -1,15 +1,24 @@
 import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
 import { useLocalInputs } from '../store/inputStore'
+import { useGameStore } from '../store/gameStore'
 
 export default function Home() {
     const playerName = useLocalInputs((state) => state.localInputs.playerName)
     const setPlayerName = useLocalInputs((state) => state.setPlayerName)
     const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
+    const setRoomCode = useGameStore((state) => state.setRoomCode)
+
+    const roomCodeFromUrl = window.location.pathname.slice(1) || null
 
     function handleButtonClicked() {
         if (playerName?.length && playerName.length > 0) {
-            setCurrentScreen('GAMECONFIG')
+            if (roomCodeFromUrl) {
+                setRoomCode(roomCodeFromUrl)
+                setCurrentScreen('ROOM')
+            } else {
+                setCurrentScreen('GAMECONFIG')
+            }
         }
     }
 
@@ -43,7 +52,9 @@ export default function Home() {
                     <div className="flex flex-col gap-3">
                         <DoodleDashButton
                             size="l"
-                            label="Create Room"
+                            label={
+                                roomCodeFromUrl ? 'Join Room' : 'Create Room'
+                            }
                             onClick={handleButtonClicked}
                         />
                     </div>

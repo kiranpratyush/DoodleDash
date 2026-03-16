@@ -73,6 +73,9 @@ namespace DoodleDash.Models
 
         [JsonPropertyName("playerName")]
         public string PlayerName { get; set; } = "";
+
+        [JsonPropertyName("roomCode")]
+        public required string RoomCode { get; set; }
     }
 
     public class JoinRoomResult

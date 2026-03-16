@@ -7,6 +7,7 @@ interface GameStoreWithActions extends GameStore {
         playerId: string,
         playerName: string
     ) => void
+    setRoomCode: (roomCode: string) => void
 }
 
 export const useGameStore = create<GameStoreWithActions>((set) => ({
@@ -40,4 +41,16 @@ export const useGameStore = create<GameStoreWithActions>((set) => ({
                 },
             },
         }),
+
+    setRoomCode: (roomCode: string) =>
+        set((state) => ({
+            roomConfig: {
+                ...(state.roomConfig ?? {
+                    maxPlayers: 0,
+                    totalRounds: 0,
+                    drawTimeSeconds: 0,
+                }),
+                roomCode,
+            },
+        })),
 }))

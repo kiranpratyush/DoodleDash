@@ -35,7 +35,7 @@ namespace DoodleDash.Controllers
         {
             var gameRoom = roomMangager.CreateRoom(roomDetails);
             if (gameRoom != null)
-                return CreatedAtAction(nameof(GetRoom), new { roomCode = gameRoom.RoomCode }, new CreateRoomResponse { PlayerId = gameRoom.HostId, PlayerName = gameRoom.HostName });
+                return CreatedAtAction(nameof(GetRoom), new { roomCode = gameRoom.RoomCode }, new CreateRoomResponse { PlayerId = gameRoom.HostId, PlayerName = gameRoom.HostName, RoomCode = gameRoom.RoomCode });
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
 

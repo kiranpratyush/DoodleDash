@@ -12,10 +12,17 @@ export default function GameConfig() {
     const setCustomWords = useLocalInputs((state) => state.setCustomWords)
     const localInputs = useLocalInputs((state) => state.localInputs)
     const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
+    const roomConfig = useGameStore((state) => state.roomConfig)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const handleStartGameButton = async () => {
+    const ensureRoomExists = async (
+        forceNew: boolean
+    ): Promise<string | null> => {
+        if (!forceNew && roomConfig?.roomCode) {
+            return roomConfig.roomCode
+        }
+
         setError(null)
         setIsLoading(true)
 
@@ -27,8 +34,6 @@ export default function GameConfig() {
             customWords: localInputs.customWords,
         })
 
-        setIsLoading(false)
-
         if (response.isSuccess) {
             const playerName = localInputs.playerName || 'Host'
             useGameStore
@@ -38,9 +43,34 @@ export default function GameConfig() {
                     response.data.playerId,
                     playerName
                 )
-            setCurrentScreen('ROOM')
+            return response.data.roomCode
         } else {
             setError(response.error.errorMessage)
+            return null
+        }
+    }
+
+    const handleStartGameButton = async () => {
+        const roomCode = await ensureRoomExists(false)
+        setIsLoading(false)
+        if (roomCode) {
+            setCurrentScreen('ROOM')
+        }
+    }
+
+    const handleInviteGameButton = async () => {
+        const currentRoomCode = await ensureRoomExists(false)
+        setIsLoading(false)
+
+        if (currentRoomCode) {
+            const inviteUrl = `${window.location.origin}/${currentRoomCode}`
+            try {
+                await navigator.clipboard.writeText(inviteUrl)
+                alert('Invite link copied to clipboard!')
+            } catch (err) {
+                console.error('Failed to copy text: ', err)
+                setError('Failed to copy invite link.')
+            }
         }
     }
 
@@ -114,7 +144,11 @@ export default function GameConfig() {
                             {error}
                         </p>
                     )}
-                    <DoodleDashButton size="l" label="Invite" />
+                    <DoodleDashButton
+                        size="l"
+                        label="Invite"
+                        onClick={handleInviteGameButton}
+                    />
                 </div>
             </div>
         </div>
