@@ -4,7 +4,7 @@ namespace DoodleDash.Services
 {
     public interface IRoomManager
     {
-        public bool TryAddPlayer(string roomId, Player p);
+        public RoomSnapShotResponse TryAddPlayer(string roomCode, string playerName, string connectionId,string?playerId);
         public bool TryRemovePlayer(string roomCode, string playerId);
         public GameRoom? CreateRoom(CreateRoomRequest roomRequest);
 
@@ -15,7 +15,5 @@ namespace DoodleDash.Services
         public bool TrySelectWord(string roomCode, string playerId, int wordIndex);
 
         public bool TrySubmitGuess(string roomCode, string playerId, string guess, out bool isCorrect, out int pointsAwarded);
-
-        public GameStateDto? GetGameState(string roomCode, string playerId);
     }
 }

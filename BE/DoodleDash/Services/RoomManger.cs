@@ -1,37 +1,28 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using DoodleDash.Hubs;
 using DoodleDash.Models;
 using DoodleDash.Utils;
+using Microsoft.AspNetCore.SignalR;
 
 namespace DoodleDash.Services
 {
     class RoomManager : IRoomManager
     {
-        private ConcurrentDictionary<string, GameRoom> rooms = new();
-        private ConcurrentDictionary<string, ConcurrentQueue<DrawAction>> canvasHistory = new();
-        private ConcurrentDictionary<string, object> roomLocks = new();
+        private ConcurrentDictionary<string, GameRoom> Rooms = new();
+        private ConcurrentDictionary<string, List<List<float>>> CanvasHistory = new();
+        private readonly ConcurrentDictionary<string, object> roomLocks = new();
+        private readonly IHubContext<DoodleDashHub> hubContext;
 
-        private const int GUESSER_POINTS = 100;
-        private const int DRAWER_POINTS = 50;
+        public RoomManager(IHubContext<DoodleDashHub> hubContext)
+        {
+            this.hubContext = hubContext;
+
+        }
 
         private object GetRoomLock(string roomCode) =>
             roomLocks.GetOrAdd(roomCode, _ => new object());
 
-        public bool TryAddPlayer(string roomCode, Player p)
-        {
-            if (!rooms.TryGetValue(roomCode, out GameRoom? room))
-                return false;
-
-            lock (GetRoomLock(roomCode))
-            {
-                if (!rooms.TryGetValue(roomCode, out room))
-                    return false;
-
-                if (room.IsExpired || room.Players.Count >= room.MaxPlayerCount)
-                    return false;
-
-                return room.Players.TryAdd(p.Id, p);
-            }
-        }
         public GameRoom? CreateRoom(CreateRoomRequest roomRequest)
         {
             int retryCount = 0;
@@ -51,20 +42,111 @@ namespace DoodleDash.Services
                     MaxPlayerCount = roomRequest.MaxAllowedPlayers,
                     CustomWords = words,
                 };
-                if (rooms.TryAdd(roomCode, room)) return room;
+                if (Rooms.TryAdd(roomCode, room)) return room;
                 retryCount++;
             }
             return null;
         }
 
+        public RoomSnapShotResponse TryAddPlayer(string roomCode, string playerName,string connectionId, string?playerId)
+        {
+            var roomResponse = new RoomSnapShotResponse();
+
+            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
+            {
+                roomResponse.ErrorMessage = "Room not found";
+                roomResponse.Success = false;
+            }
+
+            lock (GetRoomLock(roomCode))
+            {
+                if (!Rooms.TryGetValue(roomCode, out room))
+                {
+                    roomResponse.ErrorMessage = "Room not found";
+                    roomResponse.Success = false;
+                }
+                else if (room != null && (room.IsExpired || room.Players.Count >= room.MaxPlayerCount))
+                {
+                    roomResponse.ErrorMessage = "Room is full or expired";
+                    roomResponse.Success = false;
+                }
+                else if (playerId != null && room != null && !room.Players.ContainsKey(playerId))
+                {
+                    roomResponse.ErrorMessage = "Player does not exist in current room";
+                    roomResponse.Success = false;
+                }
+                else
+                {
+                    playerId ??= Guid.NewGuid().ToString();
+                    var player = new Player
+                    {
+                        Id = playerId,
+                        Name = playerName,
+                        Score = 0,
+                        ConnectionId = connectionId
+
+                    };
+                    if (!room!.Players.TryAdd(player.Id, player))
+                    {
+                        roomResponse.ErrorMessage = "Failed to add player to room";
+                        roomResponse.Success = false;
+                    }
+                    roomResponse.Player = player;
+                    roomResponse.SnapShotResponse = new GameSnapShotResponse
+                    {
+                        LobbyMessage = room.LobbyMessage,
+                        RoundNumber = room.CurrentRound,
+                        DrawData = CanvasHistory.GetOrAdd(roomCode, _ => new List<List<float>>()),
+                        ChatMessages = room.ChatMessages,
+                        RoundEndTime = room.RoundEndTime,
+                        Players = [.. room.Players.Values],
+                        CurrentWordHint = room.CurrentWordHint
+                    };
+                }
+
+            }
+            return roomResponse;
+        }
+
+        public async Task StartGame(string roomCode)
+        {
+            List<string> wordOptions = [];
+            if(!Rooms.TryGetValue(roomCode, out GameRoom? room))
+                return;
+            lock (GetRoomLock(roomCode))
+            {
+                if(!Rooms.TryGetValue(roomCode, out room))
+                    return;
+                if (room.Players.Count < 2 || room.Status != GameStatus.Lobby)
+                    return;
+                wordOptions = SendChooseWord(room);
+            }
+           
+            if(room!=null && room.ActivePlayer != null)
+            {
+               await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("StartWordSelection", wordOptions);
+            }
+
+            
+        }
+
+        private static List<string> SendChooseWord(GameRoom room)
+        {
+            IEnumerable<string> wordOptions;
+            wordOptions = Random.Shared.GetItems(room.CustomWords.ToArray(), 3);
+            var randomPlayer = room.Players.Values.ElementAt(Random.Shared.Next(room.Players.Count));
+            room.ActivePlayer = randomPlayer;
+            return wordOptions.ToList();
+        }
+
         public bool TryRemovePlayer(string roomCode, string playerId)
         {
-            if (!rooms.TryGetValue(roomCode, out GameRoom? room))
+            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
                 return false;
 
             lock (GetRoomLock(roomCode))
             {
-                if (!rooms.TryGetValue(roomCode, out room))
+                if (!Rooms.TryGetValue(roomCode, out room))
                     return false;
 
                 Player? removed;
@@ -72,192 +154,6 @@ namespace DoodleDash.Services
             }
         }
 
-        public GameRoom? GetGameRoom(string roomCode)
-        {
-            rooms.TryGetValue(roomCode, out GameRoom? room);
-            return room;
-        }
-
-        public bool TryStartGame(string roomCode, string hostId)
-        {
-            if (!rooms.TryGetValue(roomCode, out GameRoom? room))
-                return false;
-
-            lock (GetRoomLock(roomCode))
-            {
-                if (!rooms.TryGetValue(roomCode, out room))
-                    return false;
-
-                if (room.HostId != hostId)
-                    return false;
-
-                if (room.Status != GameStatus.Lobby)
-                    return false;
-
-                if (room.Players.Count < 2)
-                    return false;
-
-                room.Status = GameStatus.SelectingWord;
-                room.CurrentRound = 1;
-                room.TotalRounds = 1;
-                room.CurrentDrawerIndex = 0;
-                room.GuessedPlayerIds.Clear();
-                room.WordOptions = DefaultWords.GetRandomWords(3);
-
-                return true;
-            }
-        }
-
-        public bool TrySelectWord(string roomCode, string playerId, int wordIndex)
-        {
-            if (!rooms.TryGetValue(roomCode, out GameRoom? room))
-                return false;
-
-            lock (GetRoomLock(roomCode))
-            {
-                if (!rooms.TryGetValue(roomCode, out room))
-                    return false;
-
-                var playerIds = room.Players.Keys.ToList();
-                if (room.CurrentDrawerIndex >= playerIds.Count)
-                    return false;
-
-                var drawerId = playerIds[room.CurrentDrawerIndex];
-                if (drawerId != playerId)
-                    return false;
-
-                if (room.Status != GameStatus.SelectingWord)
-                    return false;
-
-                if (wordIndex < 0 || wordIndex >= room.WordOptions.Count)
-                    return false;
-
-                room.CurrentWord = room.WordOptions[wordIndex];
-                room.Status = GameStatus.Playing;
-                room.GuessedPlayerIds.Clear();
-
-                return true;
-            }
-        }
-
-        public bool TrySubmitGuess(string roomCode, string playerId, string guess, out bool isCorrect, out int pointsAwarded)
-        {
-            isCorrect = false;
-            pointsAwarded = 0;
-
-            if (!rooms.TryGetValue(roomCode, out GameRoom? room))
-                return false;
-
-            lock (GetRoomLock(roomCode))
-            {
-                if (!rooms.TryGetValue(roomCode, out room))
-                    return false;
-
-                if (room.Status != GameStatus.Playing)
-                    return false;
-
-                var playerIds = room.Players.Keys.ToList();
-                if (room.CurrentDrawerIndex >= playerIds.Count)
-                    return false;
-
-                var drawerId = playerIds[room.CurrentDrawerIndex];
-                if (drawerId == playerId)
-                    return false;
-
-                if (room.GuessedPlayerIds.Contains(playerId))
-                    return false;
-
-                if (string.IsNullOrWhiteSpace(room.CurrentWord))
-                    return false;
-
-                if (guess.Trim().Equals(room.CurrentWord, StringComparison.OrdinalIgnoreCase))
-                {
-                    isCorrect = true;
-                    pointsAwarded = GUESSER_POINTS;
-
-                    if (room.Players.TryGetValue(playerId, out Player? guesser))
-                    {
-                        guesser.Score += GUESSER_POINTS;
-                    }
-
-                    if (room.Players.TryGetValue(drawerId, out Player? drawer))
-                    {
-                        drawer.Score += DRAWER_POINTS;
-                    }
-
-                    room.GuessedPlayerIds.Add(playerId);
-
-                    var guesserCount = room.Players.Count - 1;
-                    if (room.GuessedPlayerIds.Count >= guesserCount)
-                    {
-                        room.Status = GameStatus.RoundEnded;
-                    }
-
-                    return true;
-                }
-
-                return true;
-            }
-        }
-
-        public GameStateDto? GetGameState(string roomCode, string playerId)
-        {
-            if (!rooms.TryGetValue(roomCode, out GameRoom? room))
-                return null;
-
-            if (!room.Players.ContainsKey(playerId))
-                return null;
-
-            var playerIds = room.Players.Keys.ToList();
-            string? currentDrawerId = null;
-            string? currentDrawerName = null;
-
-            if (room.CurrentDrawerIndex < playerIds.Count)
-            {
-                currentDrawerId = playerIds[room.CurrentDrawerIndex];
-                if (room.Players.TryGetValue(currentDrawerId, out Player? drawer))
-                {
-                    currentDrawerName = drawer.Name;
-                }
-            }
-
-            string? wordDisplay = null;
-            List<string>? wordOptions = null;
-
-            if (playerId == currentDrawerId)
-            {
-                wordDisplay = room.CurrentWord;
-                wordOptions = room.Status == GameStatus.SelectingWord ? room.WordOptions : null;
-            }
-            else if (room.Status == GameStatus.Playing && !string.IsNullOrEmpty(room.CurrentWord))
-            {
-                wordDisplay = new string('_', room.CurrentWord.Length);
-            }
-            else if (room.Status == GameStatus.RoundEnded || room.Status == GameStatus.GameEnded)
-            {
-                wordDisplay = room.CurrentWord;
-            }
-
-            var playerList = room.Players.Values.Select(p => new PlayerScoreDto
-            {
-                PlayerId = p.Id,
-                PlayerName = p.Name,
-                Score = p.Score,
-                IsDrawer = p.Id == currentDrawerId
-            }).ToList();
-
-            return new GameStateDto
-            {
-                Status = room.Status,
-                CurrentDrawerId = currentDrawerId,
-                CurrentDrawerName = currentDrawerName,
-                WordDisplay = wordDisplay,
-                CurrentRound = room.CurrentRound,
-                TotalRounds = room.TotalRounds,
-                Players = playerList,
-                HasGuessedCorrectly = room.GuessedPlayerIds.Contains(playerId),
-                WordOptions = wordOptions
-            };
-        }
+        
     }
 }

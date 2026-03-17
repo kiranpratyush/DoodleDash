@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
@@ -6,15 +7,40 @@ namespace DoodleDash.Models
 {
     public enum GameStatus { Lobby, SelectingWord, Playing, RoundEnded, GameEnded }
 
+    public enum MessageType { User, System }
+
+    public record Hints(int Index, char? Letter);
+
     public class Player
     {
         public required string Name { get; set; }
 
         public required string Id { get; set; }
 
+        public required string ConnectionId { get; set; }
+
         public int Score { get; set; } = 0;
 
     }
+
+    public class ChatMessages
+    {
+        public required string PlayerId { get; set; }
+
+        public required string PlayerName { get; set; }
+
+        public string Message { get; set; } = "";
+
+        public MessageType MessageType { get; set; }
+    }
+
+    public class WordHint
+    {
+        public int Length { get; set; }
+
+        public List<Hints> RevealedIndices { get; set; } = [];
+    }
+
     public class GameRoom
     {
         [Required]
@@ -27,11 +53,15 @@ namespace DoodleDash.Models
         [Required]
         public required Int64 MaxPlayerCount { get; set; }
 
+        public string ? LobbyMessage { get; set; } = "";
+
+        public string ? RoundEndTime { get; set; }
+
         public List<string> CustomWords { get; set; } = [];
 
-        public ConcurrentDictionary<string, Player> Players = new();
+        public ConcurrentDictionary<string, Player> Players { get; set; } = new();
 
-        public string? ActivePlayerId { get; set; }
+        public Player? ActivePlayer { get; set; }
 
         public bool IsExpired { get; set; } = false;
 
@@ -41,13 +71,31 @@ namespace DoodleDash.Models
 
         public int TotalRounds { get; set; } = 1;
 
-        public int CurrentDrawerIndex { get; set; } = 0;
-
         public string? CurrentWord { get; set; }
 
-        public List<string> WordOptions { get; set; } = [];
-
         public HashSet<string> GuessedPlayerIds { get; set; } = [];
+
+        public List<ChatMessages> ChatMessages { get; set; } = [];
+
+        public WordHint? CurrentWordHint { get; set; }
+    }
+
+    public class GameSnapShotResponse
+    {
+        public string? LobbyMessage { get; set; } = "";
+
+        public int RoundNumber { get; set; }
+
+        public List<ChatMessages> ChatMessages { get; set; } = [];
+
+        public List<Player> Players { get; set; } = [];
+
+        public WordHint? CurrentWordHint { get; set; }
+
+        public string? RoundEndTime { get; set; }
+
+        public List<List<float>> DrawData { get; set; } = [];
+
     }
 
     public class CreateRoomRequest
@@ -78,15 +126,6 @@ namespace DoodleDash.Models
         public required string RoomCode { get; set; }
     }
 
-    public class JoinRoomResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-        public Player? Player { get; set; }
-        public GameRoom? Room { get; set; }
-    }
-
     public class Guess
     {
         public required string PlayerId { get; set; }
@@ -114,50 +153,6 @@ namespace DoodleDash.Models
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 
-    public class GameStateDto
-    {
-        public GameStatus Status { get; set; }
-        public string? CurrentDrawerId { get; set; }
-        public string? CurrentDrawerName { get; set; }
-        public string? WordDisplay { get; set; }
-        public int CurrentRound { get; set; }
-        public int TotalRounds { get; set; }
-        public List<PlayerScoreDto> Players { get; set; } = [];
-        public bool HasGuessedCorrectly { get; set; }
-        public List<string>? WordOptions { get; set; }
-    }
-
-    public class PlayerScoreDto
-    {
-        public string PlayerId { get; set; } = "";
-        public string PlayerName { get; set; } = "";
-        public int Score { get; set; }
-        public bool IsDrawer { get; set; }
-    }
-
-    public class StartGameResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-        public GameStateDto? GameState { get; set; }
-    }
-
-    public class SelectWordResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-        public GameStateDto? GameState { get; set; }
-    }
-
-    public class DrawActionResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-    }
-
     public class GuessResult
     {
         public bool Success { get; set; }
@@ -167,4 +162,13 @@ namespace DoodleDash.Models
         public int PointsAwarded { get; set; }
     }
 
+    public class RoomSnapShotResponse
+    {
+        public bool Success { get; set; }
+        public string? ErrorCode { get; set; }
+        public string? ErrorMessage { get; set; }
+        public Player? Player { get; set; }
+        public GameSnapShotResponse? SnapShotResponse { get; set; }
+
+    }
 }
