@@ -9,9 +9,12 @@ namespace DoodleDash.Services
 {
     class RoomManager : IRoomManager
     {
-        private ConcurrentDictionary<string, GameRoom> Rooms = new();
-        private ConcurrentDictionary<string, List<List<float>>> CanvasHistory = new();
+        private readonly ConcurrentDictionary<string, GameRoom> Rooms = new();
+        private readonly ConcurrentDictionary<string, List<List<float>>> CanvasHistory = new();
         private readonly ConcurrentDictionary<string, object> roomLocks = new();
+
+
+
         private readonly IHubContext<DoodleDashHub> hubContext;
 
         public RoomManager(IHubContext<DoodleDashHub> hubContext)
@@ -125,9 +128,8 @@ namespace DoodleDash.Services
             if(room!=null && room.ActivePlayer != null)
             {
                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("StartWordSelection", wordOptions);
-            }
-
-            
+               await hubContext.Clients.GroupExcept(roomCode,room.ActivePlayer.ConnectionId).SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name);
+            }      
         }
 
         private static List<string> SendChooseWord(GameRoom room)
