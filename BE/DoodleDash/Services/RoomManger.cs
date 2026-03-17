@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
 using DoodleDash.Hubs;
 using DoodleDash.Models;
 using DoodleDash.Utils;
 using Microsoft.AspNetCore.SignalR;
+using System.Collections.Concurrent;
 
 namespace DoodleDash.Services
 {
@@ -128,6 +128,57 @@ namespace DoodleDash.Services
             }
         }
 
+        public async Task<RoomSnapShotResponse> TryOnWordChosen(string roomCode, string word, string connectionId)
+        {
+            var roomResponse = new RoomSnapShotResponse();
+            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
+            {
+                roomResponse.ErrorMessage = "Room not found";
+                roomResponse.Success = false;
+                return roomResponse;
+            }
+
+            lock (GetRoomLock(roomCode))
+            {
+                if (room == null || room.ActivePlayer == null || room.ActivePlayer.ConnectionId != connectionId)
+                {
+                    roomResponse.ErrorMessage = "Unauthorized: player is not active player";
+                    roomResponse.Success = false;
+                    return roomResponse;
+                }
+                room.LobbyMessage = $"{room.ActivePlayer?.Name} has chosen a word. Start guessing!";
+                room.CurrentRound++;
+                room.CurrentWord = word;
+                room.CurrentWordHint = new WordHint
+                {
+                    Length = word.Length,
+                };
+                room.Status = GameStatus.Playing;
+                room.RoundEndTime = DateTime.UtcNow.AddSeconds(80);
+
+                roomResponse.Player = room.ActivePlayer;
+                roomResponse.Success = true;
+                roomResponse.SnapShotResponse = new GameSnapShotResponse
+                {
+                    LobbyMessage = room.LobbyMessage,
+                    RoundNumber = room.CurrentRound,
+                    DrawData = CanvasHistory.GetOrAdd(roomCode, _ => new List<List<float>>()),
+                    ChatMessages = room.ChatMessages,
+                    RoundEndTime = room.RoundEndTime,
+                    Players = [.. room.Players.Values],
+                    CurrentWordHint = room.CurrentWordHint
+                };
+
+            }
+            if (room != null && room.ActivePlayer != null)
+            {
+                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("ChosenWord", room.CurrentWord);
+                await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId).SendAsync("Hint", room.CurrentWordHint);
+            }
+
+            return roomResponse;
+        }
+
         private static List<string> SendChooseWord(GameRoom room)
         {
             IEnumerable<string> wordOptions;
@@ -152,7 +203,7 @@ namespace DoodleDash.Services
             }
         }
 
-        private async Task OnRoundOver(string roomCode)
+        public async Task OnRoundOver(string roomCode)
         {
             if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
             {
@@ -193,5 +244,6 @@ namespace DoodleDash.Services
             /* Calculate final scores and send to all players in the room */
             await hubContext.Clients.Group(roomCode).SendAsync("GameOver");
         }
+
     }
 }

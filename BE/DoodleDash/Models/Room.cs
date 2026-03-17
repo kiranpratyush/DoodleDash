@@ -53,9 +53,9 @@ namespace DoodleDash.Models
         [Required]
         public required Int64 MaxPlayerCount { get; set; }
 
-        public string ? LobbyMessage { get; set; } = "";
+        public string? LobbyMessage { get; set; } = "";
 
-        public string ? RoundEndTime { get; set; }
+        public DateTime? RoundEndTime { get; set; }
 
         public List<string> CustomWords { get; set; } = [];
 
@@ -92,7 +92,7 @@ namespace DoodleDash.Models
 
         public WordHint? CurrentWordHint { get; set; }
 
-        public string? RoundEndTime { get; set; }
+        public DateTime? RoundEndTime { get; set; }
 
         public List<List<float>> DrawData { get; set; } = [];
 

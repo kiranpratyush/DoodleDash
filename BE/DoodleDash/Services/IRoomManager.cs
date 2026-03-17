@@ -8,5 +8,8 @@ namespace DoodleDash.Services
         bool TryRemovePlayer(string roomCode, string playerId);
         GameRoom? CreateRoom(CreateRoomRequest roomRequest);
         Task StartGame(string roomCode);
+        Task<RoomSnapShotResponse> TryOnWordChosen(string roomCode, string word, string connectionId);
+
+        Task OnRoundOver(string roomCode);
     }
 }

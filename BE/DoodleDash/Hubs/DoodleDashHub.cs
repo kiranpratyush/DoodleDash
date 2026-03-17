@@ -29,6 +29,22 @@ namespace DoodleDash.Hubs
 
         }
 
+        public async Task<RoomSnapShotResponse> onWordChosen(string word)
+        {
+            var roomCode = Context.Items["RoomCode"] as string ?? "";
+
+            var response = await roomManager.TryOnWordChosen(roomCode, word, Context.ConnectionId);
+             _ = Task.Run(async () =>
+            {
+                await Task.Delay(response.SnapShotResponse?.RoundEndTime - DateTime.UtcNow ?? TimeSpan.Zero);
+                await roomManager.OnRoundOver(roomCode);
+            });
+
+            return response;
+
+
+        }
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             string? playerId = Context.Items["PlayerId"] as string;
