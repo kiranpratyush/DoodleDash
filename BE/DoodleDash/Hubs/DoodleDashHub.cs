@@ -9,8 +9,6 @@ namespace DoodleDash.Hubs
     {
         private readonly IRoomManager roomManager;
 
-        private readonly ConcurrentDictionary<string, string> connectionIdToPlayerId = new();
-
         public DoodleDashHub(IRoomManager _roomManager)
         {
             roomManager = _roomManager;
@@ -18,23 +16,23 @@ namespace DoodleDash.Hubs
 
         public async Task<RoomSnapShotResponse> JoinRoom(string roomCode, string playerName,string?playerId)
         {
-           
             var response =  roomManager.TryAddPlayer(roomCode, playerName,Context.ConnectionId,playerId);
             if (response.Success)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
-                connectionIdToPlayerId[Context.ConnectionId] = response.Player != null ? response.Player.Id : string.Empty;
                 await Clients.GroupExcept(roomCode, Context.ConnectionId).SendAsync("PlayerJoined", response.Player);
             }
-           
+            Context.Items["PlayerId"] =response.Player?.Id;
+            Context.Items["RoomCode"] = roomCode;
+
             return response;
 
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var playerId = Context.Items["PlayerId"] as string;
-            var roomCode = Context.Items["RoomCode"] as string;
+            string? playerId = Context.Items["PlayerId"] as string;
+            string? roomCode = Context.Items["RoomCode"] as string;
 
             if (playerId != null && roomCode != null)
             {
