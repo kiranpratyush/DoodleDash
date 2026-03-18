@@ -141,19 +141,6 @@ namespace DoodleDash.Models
         public required string Text { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
-
-    public class DrawAction
-    {
-        public required string PlayerId { get; set; }
-        public required float X0 { get; set; }
-        public required float Y0 { get; set; }
-        public required float X1 { get; set; }
-        public required float Y1 { get; set; }
-        public string Color { get; set; } = "#000000";
-        public int BrushSize { get; set; } = 4;
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-    }
-
     public class GuessResult
     {
         public bool Success { get; set; }

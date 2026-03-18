@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using DoodleDash.Models;
 using DoodleDash.Services;
-using System.Collections.Concurrent;
 
 namespace DoodleDash.Hubs
 {
@@ -27,6 +26,11 @@ namespace DoodleDash.Hubs
 
             return response;
 
+        }
+
+        public async Task OnDrawData(string roomCode,string playerId,List<float>drawData)
+        {
+            await roomManager.OnDrawData(roomCode, playerId, Context.ConnectionId, drawData);
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
