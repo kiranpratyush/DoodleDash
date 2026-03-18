@@ -33,6 +33,29 @@ namespace DoodleDash.Hubs
             await roomManager.OnDrawData(roomCode, playerId, Context.ConnectionId, drawData);
         }
 
+        public async Task ChooseWord(string roomCode, string chosenWord)
+        {
+            string? playerId = Context.Items["PlayerId"] as string;
+            if (playerId == null)
+                return;
+
+            await roomManager.OnWordChosen(roomCode, playerId, Context.ConnectionId, chosenWord);
+        }
+
+        public async Task GuessWord(string roomCode, string guessText)
+        {
+            string? playerId = Context.Items["PlayerId"] as string;
+            if (playerId == null)
+                return;
+
+            await roomManager.OnGuess(roomCode, playerId, Context.ConnectionId, guessText);
+        }
+
+        public async Task StartGame(string roomCode)
+        {
+            await roomManager.StartGame(roomCode);
+        }
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             string? playerId = Context.Items["PlayerId"] as string;

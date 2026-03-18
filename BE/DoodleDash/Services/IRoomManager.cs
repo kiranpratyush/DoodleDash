@@ -10,5 +10,9 @@ namespace DoodleDash.Services
         Task StartGame(string roomCode);
 
         Task OnDrawData(string roomCode, string playerId, string connectionId, List<float> drawData);
+
+        Task OnWordChosen(string roomCode, string playerId, string connectionId, string chosenWord);
+
+        Task OnGuess(string roomCode, string playerId, string connectionId, string guessText);
     }
 }

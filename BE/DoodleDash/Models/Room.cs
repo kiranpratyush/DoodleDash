@@ -79,24 +79,44 @@ namespace DoodleDash.Models
 
         public int TotalRounds { get; set; } = 1;
 
+        public int DrawTimeSeconds { get; set; } = 60;
+
+        public int WordSelectionSeconds { get; set; } = 20;
+
         public string? CurrentWord { get; set; }
+
+        public List<string> CurrentWordOptions { get; set; } = [];
 
         public HashSet<string> GuessedPlayerIds { get; set; } = [];
 
         public List<ChatMessages> ChatMessages { get; set; } = [];
 
         public WordHint? CurrentWordHint { get; set; }
+
+        public string? SelectionEndTime { get; set; }
+
+        public RoundOverResponse? LastRoundResult { get; set; }
+
+        public GameOverResponse? FinalResult { get; set; }
     }
 
     public class GameSnapShotResponse
     {
+        public GameStatus Status { get; set; } = GameStatus.Lobby;
+
         public string? LobbyMessage { get; set; } = "";
 
         public int RoundNumber { get; set; }
 
+        public int TotalRounds { get; set; }
+
+        public int DrawTimeSeconds { get; set; }
+
         public List<ChatMessages> ChatMessages { get; set; } = [];
 
         public List<Player> Players { get; set; } = [];
+
+        public Player? ActivePlayer { get; set; }
 
         public WordHint? CurrentWordHint { get; set; }
 
@@ -104,6 +124,21 @@ namespace DoodleDash.Models
 
         public List<List<float>> DrawData { get; set; } = [];
 
+        public string? SelectionEndTime { get; set; }
+
+        public RoundOverResponse? LastRoundResult { get; set; }
+
+        public GameOverResponse? FinalResult { get; set; }
+
+    }
+
+    public class RoundStartedResponse : Response
+    {
+        public Player? ActivePlayer { get; set; }
+        public WordHint? CurrentWordHint { get; set; }
+        public string? RoundEndTime { get; set; }
+        public int RoundNumber { get; set; }
+        public string? CurrentWord { get; set; }
     }
 
     public class CreateRoomRequest
