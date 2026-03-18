@@ -5,11 +5,19 @@ using System.Text.Json.Serialization;
 
 namespace DoodleDash.Models
 {
-    public enum GameStatus { Lobby, SelectingWord, Playing, RoundEnded, GameEnded }
+    public enum GameStatus { Lobby, SelectingWord, Drawing, RoundEnded, GameEnded }
 
     public enum MessageType { User, System }
 
     public record Hints(int Index, char? Letter);
+
+
+    public class Response
+    {
+        public bool Success { get; set; }
+        public string? ErrorCode { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
 
     public class Player
     {
@@ -134,13 +142,6 @@ namespace DoodleDash.Models
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 
-    public class SubmitGuessResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-    }
-
     public class DrawAction
     {
         public required string PlayerId { get; set; }
@@ -162,13 +163,24 @@ namespace DoodleDash.Models
         public int PointsAwarded { get; set; }
     }
 
-    public class RoomSnapShotResponse
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-        public Player? Player { get; set; }
+    public class RoomSnapShotResponse:Response
+    {   public Player? Player { get; set; }
         public GameSnapShotResponse? SnapShotResponse { get; set; }
 
+    }
+
+    public class RoundOverResponse : Response
+    {
+        public List<Player> Players { get; set; } = [];
+        public string CorrectWord { get; set; } = "";
+
+        public int RoundNumber { get; set; }
+    }
+
+    public class GameOverResponse : Response
+    {
+        public List<Player> FinalScores { get; set; } = [];
+
+        public  Player? Winner { get; set; }
     }
 }

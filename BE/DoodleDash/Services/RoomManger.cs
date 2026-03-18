@@ -1,8 +1,13 @@
-using System.Collections.Concurrent;
 using DoodleDash.Hubs;
 using DoodleDash.Models;
 using DoodleDash.Utils;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.FileSystemGlobbing;
+using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Diagnostics.Metrics;
+using static System.Reflection.Metadata.BlobBuilder;
 
 namespace DoodleDash.Services
 {
@@ -18,7 +23,6 @@ namespace DoodleDash.Services
             this.hubContext = hubContext;
 
         }
-
         private object GetRoomLock(string roomCode) =>
             roomLocks.GetOrAdd(roomCode, _ => new object());
 
@@ -127,16 +131,6 @@ namespace DoodleDash.Services
                 await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId).SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name);
             }
         }
-
-        private static List<string> SendChooseWord(GameRoom room)
-        {
-            IEnumerable<string> wordOptions;
-            wordOptions = Random.Shared.GetItems(room.CustomWords.ToArray(), 3);
-            var randomPlayer = room.Players.Values.ElementAt(Random.Shared.Next(room.Players.Count));
-            room.ActivePlayer = randomPlayer;
-            return wordOptions.ToList();
-        }
-
         public bool TryRemovePlayer(string roomCode, string playerId)
         {
             if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
@@ -152,7 +146,7 @@ namespace DoodleDash.Services
             }
         }
 
-        private async Task OnRoundOver(string roomCode)
+        public async Task OnRoundOver(string roomCode)
         {
             if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
             {
@@ -162,22 +156,76 @@ namespace DoodleDash.Services
             {
                 return;
             }
-            room.Status = GameStatus.RoundEnded;
-            /* Calculate scores here and send Round End score to all the players in the room along with revealed word */
-            await Task.Delay(5000);
-            if (room.CurrentRound < room.TotalRounds)
+
+            RoundOverResponse response = new() { };
+            string? activePlayerConnectionId = null;
+            List<string>? wordOptions = null;
+            string? activePlayerId = null;
+            string? activePlayerName = null;
+            bool shouldStartNextRound = false;
+            bool shouldEndGame = false;
+
+            lock (GetRoomLock(roomCode))
             {
-                room.CurrentRound++;
-                room.Status = GameStatus.SelectingWord;
-                var wordOptions = SendChooseWord(room);
-                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("StartWordSelection", wordOptions);
-                await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId).SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name);
+                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
+                {
+                    return;
+                }
+
+                room.Status = GameStatus.RoundEnded;
+                response.Success = true;
+                response.RoundNumber = room.CurrentRound;
+                response.CorrectWord = room.CurrentWord ?? "";
+                foreach (var player in room.Players.Values)
+                {
+                    response.Players.Add(player);
+                }
             }
-            else
+            await hubContext.Clients.Group(roomCode).SendAsync("RoundOver", response);
+
+            await Task.Delay(5000);
+
+            // Second lock: prepare next round or game end
+            lock (GetRoomLock(roomCode))
             {
-                await OnGameOver(roomCode); ;
+                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
+                {
+                    return;
+                }
+
+                if (room.CurrentRound < room.TotalRounds)
+                {
+                    room.CurrentRound++;
+                    room.Status = GameStatus.SelectingWord;
+                    room.CurrentWord = null;
+                    room.CurrentWordHint = null;
+
+                    // Clear canvas history for new round
+                    CanvasHistory.TryRemove(roomCode, out _);
+
+                    wordOptions = SendChooseWord(room);
+                    activePlayerConnectionId = room.ActivePlayer?.ConnectionId;
+                    activePlayerId = room.ActivePlayer?.Id;
+                    activePlayerName = room.ActivePlayer?.Name;
+                    shouldStartNextRound = true;
+                }
+                else
+                {
+                    shouldEndGame = true;
+                }
+            }
+            if (shouldStartNextRound && activePlayerConnectionId != null)
+            {
+                await hubContext.Clients.Client(activePlayerConnectionId).SendAsync("StartWordSelection", wordOptions);
+                await hubContext.Clients.GroupExcept(roomCode, activePlayerConnectionId).SendAsync("GameStarted", activePlayerId, activePlayerName);
+            }
+            else if (shouldEndGame)
+            {
+                await OnGameOver(roomCode);
             }
         }
+
+        #region private methods
 
         private async Task OnGameOver(string roomCode)
         {
@@ -189,9 +237,35 @@ namespace DoodleDash.Services
             {
                 return;
             }
-            room.Status = GameStatus.GameEnded;
-            /* Calculate final scores and send to all players in the room */
-            await hubContext.Clients.Group(roomCode).SendAsync("GameOver");
+
+            GameOverResponse response = new();
+
+            lock (GetRoomLock(roomCode))
+            {
+                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
+                {
+                    return;
+                }
+
+                room.Status = GameStatus.GameEnded;
+
+                var sortedPlayers = room.Players.Values
+                    .OrderByDescending(p => p.Score)
+                    .ToList();
+
+                response.FinalScores = sortedPlayers;
+                response.Winner = sortedPlayers.FirstOrDefault();
+            }
+            await hubContext.Clients.Group(roomCode).SendAsync("GameOver", response);
         }
+        private static List<string> SendChooseWord(GameRoom room)
+        {
+            IEnumerable<string> wordOptions;
+            wordOptions = Random.Shared.GetItems(room.CustomWords.ToArray(), 3);
+            var randomPlayer = room.Players.Values.ElementAt(Random.Shared.Next(room.Players.Count));
+            room.ActivePlayer = randomPlayer;
+            return wordOptions.ToList();
+        }
+        #endregion
     }
 }
