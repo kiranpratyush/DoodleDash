@@ -11,7 +11,7 @@ using static System.Reflection.Metadata.BlobBuilder;
 
 namespace DoodleDash.Services
 {
-    class RoomManager : IRoomManager
+    partial class RoomManager : IRoomManager
     {
         private readonly ConcurrentDictionary<string, GameRoom> Rooms = new();
         private readonly ConcurrentDictionary<string, List<List<float>>> CanvasHistory = new();
@@ -185,7 +185,6 @@ namespace DoodleDash.Services
 
             await Task.Delay(5000);
 
-            // Second lock: prepare next round or game end
             lock (GetRoomLock(roomCode))
             {
                 if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
@@ -200,7 +199,6 @@ namespace DoodleDash.Services
                     room.CurrentWord = null;
                     room.CurrentWordHint = null;
 
-                    // Clear canvas history for new round
                     CanvasHistory.TryRemove(roomCode, out _);
 
                     wordOptions = SendChooseWord(room);
