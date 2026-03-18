@@ -10,7 +10,6 @@ namespace DoodleDash.Controllers
     {
         private readonly IRoomManager roomMangager;
 
-
         public RoomsController(IRoomManager _roomManager)
         {
             roomMangager = _roomManager;
@@ -20,24 +19,23 @@ namespace DoodleDash.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Description = "Game Room details")]
         public ActionResult<GameRoom> GetRoom(string roomCode)
         {
-            var gameRoom = roomMangager.GetGameRoom(roomCode);
+            GameRoom? gameRoom = null;
             if (gameRoom == null) return Ok(null);
             return Ok(new GameRoom
             {
                 RoomCode = gameRoom.RoomCode,
-                RoomName = gameRoom.RoomName,
                 HostId = gameRoom.HostId,
                 HostName = gameRoom.HostName,
                 MaxPlayerCount = gameRoom.MaxPlayerCount
             });
         }
         [HttpPost()]
-        [ProducesResponseType(StatusCodes.Status201Created, Description = "Room code", StatusCode = StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(CreateRoomResponse))]
         public IActionResult CreateRooms(CreateRoomRequest roomDetails)
         {
             var gameRoom = roomMangager.CreateRoom(roomDetails);
             if (gameRoom != null)
-                return CreatedAtAction(nameof(GetRoom), new { roomCode = gameRoom.RoomCode }, default);
+                return CreatedAtAction(nameof(GetRoom), new { roomCode = gameRoom.RoomCode }, new CreateRoomResponse { PlayerId = gameRoom.HostId, PlayerName = gameRoom.HostName, RoomCode = gameRoom.RoomCode });
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
 

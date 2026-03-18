@@ -4,9 +4,15 @@ namespace DoodleDash.Services
 {
     public interface IRoomManager
     {
-        public bool TryAddPlayer(string roomId, Player p);
-        public GameRoom? CreateRoom(CreateRoomRequest roomRequest);
+        RoomSnapShotResponse TryAddPlayer(string roomCode, string playerName, string connectionId,string?playerId);
+        bool TryRemovePlayer(string roomCode, string playerId);
+        GameRoom? CreateRoom(CreateRoomRequest roomRequest);
+        Task StartGame(string roomCode);
 
-        public GameRoom? GetGameRoom(string roomCode);
+        Task OnDrawData(string roomCode, string playerId, string connectionId, List<float> drawData);
+
+        Task OnWordChosen(string roomCode, string playerId, string connectionId, string chosenWord);
+
+        Task OnGuess(string roomCode, string playerId, string connectionId, string guessText);
     }
 }

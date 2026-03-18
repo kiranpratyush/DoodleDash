@@ -1,5 +1,6 @@
 
 using DoodleDash.Hubs;
+using DoodleDash.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddHealthChecks();
 
+builder.Services.AddSingleton<IRoomManager, RoomManager>();
+
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>
@@ -18,7 +21,7 @@ if (builder.Environment.IsDevelopment())
         options.AddDefaultPolicy(
             builder =>
             {
-                builder.WithOrigins("http://localhost:3001").AllowAnyHeader()
+                builder.WithOrigins("http://localhost:4000").AllowAnyHeader()
                 .WithMethods("GET", "POST").AllowCredentials();
             }
         );

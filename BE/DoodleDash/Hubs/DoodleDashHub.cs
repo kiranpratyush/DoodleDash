@@ -1,11 +1,72 @@
 using Microsoft.AspNetCore.SignalR;
+using DoodleDash.Models;
+using DoodleDash.Services;
+
 namespace DoodleDash.Hubs
 {
     class DoodleDashHub : Hub
     {
-        public async Task SendMessage(string user, string message)
+        private readonly IRoomManager roomManager;
+
+        public DoodleDashHub(IRoomManager _roomManager)
         {
-            await Clients.All.SendAsync("ReceiveMessage", user, message);
+            roomManager = _roomManager;
+        }
+
+        public async Task<RoomSnapShotResponse> JoinRoom(string roomCode, string playerName,string?playerId)
+        {
+            var response =  roomManager.TryAddPlayer(roomCode, playerName,Context.ConnectionId,playerId);
+            if (response.Success)
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+                await Clients.GroupExcept(roomCode, Context.ConnectionId).SendAsync("PlayerJoined", response.Player);
+            }
+            Context.Items["PlayerId"] =response.Player?.Id;
+            Context.Items["RoomCode"] = roomCode;
+
+            return response;
+
+        }
+
+        public async Task OnDrawData(string roomCode,string playerId,List<float>drawData)
+        {
+            await roomManager.OnDrawData(roomCode, playerId, Context.ConnectionId, drawData);
+        }
+
+        public async Task ChooseWord(string roomCode, string chosenWord)
+        {
+            string? playerId = Context.Items["PlayerId"] as string;
+            if (playerId == null)
+                return;
+
+            await roomManager.OnWordChosen(roomCode, playerId, Context.ConnectionId, chosenWord);
+        }
+
+        public async Task GuessWord(string roomCode, string guessText)
+        {
+            string? playerId = Context.Items["PlayerId"] as string;
+            if (playerId == null)
+                return;
+
+            await roomManager.OnGuess(roomCode, playerId, Context.ConnectionId, guessText);
+        }
+
+        public async Task StartGame(string roomCode)
+        {
+            await roomManager.StartGame(roomCode);
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            string? playerId = Context.Items["PlayerId"] as string;
+            string? roomCode = Context.Items["RoomCode"] as string;
+
+            if (playerId != null && roomCode != null)
+            {
+                roomManager.TryRemovePlayer(roomCode, playerId);
+            }
+
+            await base.OnDisconnectedAsync(exception);
         }
     }
 }
