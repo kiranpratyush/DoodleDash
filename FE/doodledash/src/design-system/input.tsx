@@ -4,6 +4,7 @@ interface DoodleDashInputProps {
     type: string
     id?: string
     value: string | null
+    disabled?: boolean
 }
 
 export function DoodleDashInput({
@@ -12,15 +13,21 @@ export function DoodleDashInput({
     type,
     id,
     value,
+    disabled,
 }: DoodleDashInputProps) {
     return (
         <input
-            className="p-2 border-2 border-emerald-400 text-lg h-8 rounded-sm outline-emerald-600 inline-block w-full"
+            className={`p-2 border-2 text-lg h-8 rounded-sm inline-block w-full ${
+                disabled
+                    ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : 'border-emerald-400 outline-emerald-600'
+            }`}
             type={type}
             placeholder={placeHolder}
             onChange={onChange}
             id={id}
             value={value || ''}
+            disabled={disabled}
         ></input>
     )
 }

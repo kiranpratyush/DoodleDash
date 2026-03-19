@@ -73,7 +73,7 @@ namespace DoodleDash.Services
                     roomResponse.ErrorMessage = "Room is full or expired";
                     roomResponse.Success = false;
                 }
-                else if (playerId != null && room != null && !room.Players.ContainsKey(playerId))
+                else if (playerId != null && room != null && room.HostId != playerId)
                 {
                     roomResponse.ErrorMessage = "Player does not exist in current room";
                     roomResponse.Success = false;
@@ -168,18 +168,22 @@ namespace DoodleDash.Services
             }
         }
 
-        public bool TryRemovePlayer(string roomCode, string playerId)
+        public Player? TryRemovePlayer(string roomCode, string playerId)
         {
             if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-                return false;
+                return null;
 
             lock (GetRoomLock(roomCode))
             {
                 if (!Rooms.TryGetValue(roomCode, out room))
-                    return false;
+                    return null;
 
                 Player? removed;
-                return room.Players.TryRemove(playerId, out removed);
+                if (room.Players.TryRemove(playerId, out removed))
+                {
+                    return removed;
+                }
+                return null;
             }
         }
 

@@ -21,5 +21,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
   },
-  "include": ["src", "types.ts"]
+  "include": ["src", "src/types.ts"]
 }

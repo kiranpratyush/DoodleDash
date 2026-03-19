@@ -5,7 +5,7 @@ namespace DoodleDash.Services
     public interface IRoomManager
     {
         RoomSnapShotResponse TryAddPlayer(string roomCode, string playerName, string connectionId,string?playerId);
-        bool TryRemovePlayer(string roomCode, string playerId);
+        Player? TryRemovePlayer(string roomCode, string playerId);
         GameRoom? CreateRoom(CreateRoomRequest roomRequest);
         Task StartGame(string roomCode);
 

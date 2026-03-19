@@ -5,25 +5,48 @@ import { Player } from '../components/player'
 import { Guess } from '../components/guess'
 import { GuessWord } from '../components/guessWord'
 import { Timer } from '../components/timer'
+import { useGameStore } from '../store/gameStore'
 import { gameHubService } from '../services/gameHubService'
-import { type Pos } from '../../types'
 
 export default function Room() {
     const [color, setColor] = useState('#000000')
     const [brushSize] = useState(3)
+    const upsertPlayer = useGameStore((state) => state.upsertPlayer)
+    const removePlayer = useGameStore((state) => state.removePlayer)
+    const addChatMessage = useGameStore((state) => state.addChatMessage)
 
-    function sendDraw(prevPos: Pos, curPos: Pos) {
-        gameHubService.sendDataPoints({
-            x0: prevPos.x,
-            y0: prevPos.y,
-            x1: curPos.x,
-            y1: curPos.y,
-            brushSize: brushSize,
-            color: color,
-            playerId: '1',
+    useEffect(() => {
+        const cleanupJoined = gameHubService.onPlayerJoined((player) => {
+            console.log(player)
+            if (!player) {
+                return
+            }
+            upsertPlayer(player)
+            addChatMessage({
+                playerId: 'system',
+                playerName: 'System',
+                message: `${player.name} joined`,
+                messageType: 'System',
+            })
         })
-        console.log([prevPos.x, prevPos.y, curPos.x, curPos.y])
-    }
+        const cleanupLeft = gameHubService.onPlayerLeft((player) => {
+            if (!player) {
+                return
+            }
+            removePlayer(player.id)
+            addChatMessage({
+                playerId: 'system',
+                playerName: 'System',
+                message: `${player.name} left`,
+                messageType: 'System',
+            })
+        })
+
+        return () => {
+            cleanupJoined()
+            cleanupLeft()
+        }
+    }, [addChatMessage, removePlayer, upsertPlayer])
 
     return (
         <div className="flex flex-col gradient-bg">
@@ -44,7 +67,6 @@ export default function Room() {
                         brushSize={brushSize}
                         isDrawingAllowed={true}
                         throttleInMs={50}
-                    }
                     />
                     <ColorPicker
                         activeColor={color}

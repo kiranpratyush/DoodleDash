@@ -2,22 +2,21 @@ import { create } from 'zustand'
 import {
     type ChatMessage,
     type GameSnapShotResponse,
-    type GameStatus,
     type GameStore,
-    type Player,
     type RoomSnapshotResponse,
-} from '../../types'
+} from '../types'
 
 interface GameStoreWithActions extends GameStore {
     applyRoomSnapshot: (snapshot: RoomSnapshotResponse) => void
     addChatMessage: (message: ChatMessage) => void
+    upsertPlayer: (player: GameStore['currentPlayer']) => void
+    removePlayer: (playerId: string) => void
     resetGame: () => void
+    setGameStore: (storeUpdates: Partial<GameStore>) => void
 }
 
 const defaultGameStore: GameStore = {
     roomCode: '',
-    currentPlayerId: '',
-    currentPlayerName: '',
     drawTimeSeconds: 0,
     players: [],
     gameStatus: 'Lobby',
@@ -59,9 +58,6 @@ export const useGameStore = create<GameStoreWithActions>((set) => ({
 
             const nextState: Partial<GameStore> = {
                 currentPlayer: snapshot.player ?? state.currentPlayer,
-                currentPlayerId: snapshot.player?.id ?? state.currentPlayerId,
-                currentPlayerName:
-                    snapshot.player?.name ?? state.currentPlayerName,
             }
 
             if (snapshot.snapShotResponse) {
@@ -75,9 +71,34 @@ export const useGameStore = create<GameStoreWithActions>((set) => ({
             return { ...state, ...nextState }
         }),
 
+    setGameStore: (storeUpdate: Partial<GameStore>) => {
+        set((state) => {
+            return { ...state, ...storeUpdate }
+        })
+    },
     addChatMessage: (message: ChatMessage) =>
         set((state) => ({
             chatMessages: [...state.chatMessages, message],
+        })),
+    upsertPlayer: (player) =>
+        set((state) => {
+            if (!player) {
+                return state
+            }
+            const existingIndex = state.players.findIndex(
+                (p) => p.id === player.id
+            )
+            if (existingIndex === -1) {
+                return { players: [...state.players, player] }
+            }
+
+            const updatedPlayers = [...state.players]
+            updatedPlayers[existingIndex] = player
+            return { players: updatedPlayers }
+        }),
+    removePlayer: (playerId) =>
+        set((state) => ({
+            players: state.players.filter((player) => player.id !== playerId),
         })),
 
     resetGame: () => set(() => defaultGameStore),

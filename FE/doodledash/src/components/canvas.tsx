@@ -1,7 +1,8 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { setupResponsiveCanvas } from './canvasActions'
-import { type Pos } from '../../types'
+import { type Pos } from '../types'
 import { gameHubService } from '../services/gameHubService'
+import { useGameStore } from '../store/gameStore'
 
 interface Props {
     color: string
@@ -18,6 +19,24 @@ export function Canvas(prop: Props) {
     const prevNetWorkPosRef = useRef<Pos>({ x: -1, y: -1 })
     const isDrawingRef = useRef<boolean>(false)
     const lastSentRef = useRef(0)
+    const roomCode = useGameStore((state) => state.roomCode)
+    const playerId = useGameStore((state) => state.currentPlayer?.id)
+
+    function sendDraw(x: number, y: number) {
+        if (playerId) {
+            gameHubService.sendDataPoints({
+                x0: prevNetWorkPosRef.current.x,
+                y0: prevNetWorkPosRef.current.y,
+                x1: x,
+                y1: y,
+                brushSize: prop.brushSize,
+                color: prop.color,
+                playerId: playerId,
+                roomCode: roomCode,
+            })
+            prevNetWorkPosRef.current = { x, y }
+        }
+    }
 
     function draw(
         prevPos: Pos,
@@ -35,11 +54,6 @@ export function Canvas(prop: Props) {
         ctx.moveTo(prevPos.x, prevPos.y)
         ctx.lineTo(currPos.x, currPos.y)
         ctx.stroke()
-    }
-
-    function sendDrawData(x: number, y: number) {
-        gameHubService.sendDataPoints({ x, y })
-        prevNetWorkPosRef.current = { x, y }
     }
 
     function onMouseDown(event: MouseEvent<HTMLCanvasElement>) {
@@ -64,7 +78,7 @@ export function Canvas(prop: Props) {
         prevPosRef.current = { x, y }
         const now = Date.now()
         if (now - lastSentRef.current >= prop.throttleInMs) {
-            sendDrawData(x, y)
+            sendDraw(x, y)
             lastSentRef.current = now
         }
     }
@@ -85,7 +99,7 @@ export function Canvas(prop: Props) {
                 ctx.fillRect(0, 0, canvas.width, canvas.height)
             }
         }
-        gameHubService.onReceiveDataPoints((point) => {
+        gameHubService.OnDrawData((point) => {
             draw(
                 { x: point.x0, y: point.y0 },
                 { x: point.x1, y: point.y1 },

@@ -10,7 +10,8 @@ export interface Pos {
     x: number
     y: number
 }
-export interface DataPoint {
+export interface DrawPoint {
+    roomCode: string
     playerId: string
     x0: number
     y0: number
@@ -111,8 +112,6 @@ export interface RoomSnapshotResponse extends Response {
 
 export interface GameStore {
     roomCode: string
-    currentPlayerId: string
-    currentPlayerName: string
     maxPlayerCount?: number
     drawTimeSeconds: number
     wordSelectionEndTime?: string

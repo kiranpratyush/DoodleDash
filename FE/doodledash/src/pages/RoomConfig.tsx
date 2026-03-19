@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
 import { useLocalInputs } from '../store/inputStore'
 import { useGameStore } from '../store/gameStore'
 import { createRoom } from '../services/gameService'
+import { gameHubService } from '../services/gameHubService'
 
 export default function GameConfig() {
     const setMaxPlayers = useLocalInputs((state) => state.setMaxPlayers)
@@ -12,17 +13,23 @@ export default function GameConfig() {
     const setCustomWords = useLocalInputs((state) => state.setCustomWords)
     const localInputs = useLocalInputs((state) => state.localInputs)
     const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
-    const roomConfig = useGameStore((state) => state.roomConfig)
+    const players = useGameStore((state) => state.players)
+    const chatMessages = useGameStore((state) => state.chatMessages)
+    const applyRoomSnapshot = useGameStore((state) => state.applyRoomSnapshot)
+    const setGameStore = useGameStore((state) => state.setGameStore)
+    const upsertPlayer = useGameStore((state) => state.upsertPlayer)
+    const removePlayer = useGameStore((state) => state.removePlayer)
+    const addChatMessage = useGameStore((state) => state.addChatMessage)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const hasJoinedRef = useRef(false)
+    const [createdRoom, setCreatedRoom] = useState<{
+        roomCode: string
+        playerId?: string
+        playerName: string
+    } | null>(null)
 
-    const ensureRoomExists = async (
-        forceNew: boolean
-    ): Promise<string | null> => {
-        if (!forceNew && roomConfig?.roomCode) {
-            return roomConfig.roomCode
-        }
-
+    const handleCreateRoomButton = async () => {
         setError(null)
         setIsLoading(true)
 
@@ -35,44 +42,132 @@ export default function GameConfig() {
         })
 
         if (response.isSuccess) {
-            const playerName = localInputs.playerName || 'Host'
-            useGameStore
-                .getState()
-                .setRoomDetails(
-                    response.data.roomCode,
-                    response.data.playerId,
-                    playerName
-                )
-            return response.data.roomCode
+            const playerName = response.data.playerName || 'Host'
+            const nextRoom = {
+                roomCode: response.data.roomCode,
+                playerId: response.data.playerId,
+                playerName,
+            }
+            setCreatedRoom(nextRoom)
+            setGameStore({ roomCode: response.data.roomCode })
+            setIsLoading(false)
+            return
         } else {
             setError(response.error.errorMessage)
-            return null
+            setIsLoading(false)
+            return
         }
     }
 
     const handleStartGameButton = async () => {
-        const roomCode = await ensureRoomExists(false)
-        setIsLoading(false)
-        if (roomCode) {
-            setCurrentScreen('ROOM')
+        if (!createdRoom) {
+            return
         }
+
+        setIsLoading(true)
+        try {
+            await gameHubService.startGame(createdRoom.roomCode)
+            setCurrentScreen('ROOM')
+        } catch (err) {
+            console.error('Failed to start game:', err)
+            setError('Failed to start game.')
+        }
+        setIsLoading(false)
     }
 
     const handleInviteGameButton = async () => {
-        const currentRoomCode = await ensureRoomExists(false)
-        setIsLoading(false)
+        if (!createdRoom) {
+            setError('Create a room first to invite players.')
+            return
+        }
 
-        if (currentRoomCode) {
-            const inviteUrl = `${window.location.origin}/${currentRoomCode}`
-            try {
-                await navigator.clipboard.writeText(inviteUrl)
-                alert('Invite link copied to clipboard!')
-            } catch (err) {
-                console.error('Failed to copy text: ', err)
-                setError('Failed to copy invite link.')
-            }
+        const inviteUrl = `${window.location.origin}/${createdRoom.roomCode}`
+        try {
+            await navigator.clipboard.writeText(inviteUrl)
+            alert('Invite link copied to clipboard!')
+        } catch (err) {
+            console.error('Failed to copy text: ', err)
+            setError('Failed to copy invite link.')
         }
     }
+
+    useEffect(() => {
+        let isMounted = true
+
+        const joinRoom = async () => {
+            if (hasJoinedRef.current) {
+                return
+            }
+
+            if (!createdRoom) {
+                return
+            }
+
+            const joinResponse = await gameHubService.joinRoom(
+                createdRoom.roomCode,
+                createdRoom.playerName,
+                createdRoom.playerId
+            )
+
+            if (!isMounted) {
+                return
+            }
+
+            if (joinResponse.success) {
+                hasJoinedRef.current = true
+                setGameStore({ roomCode: createdRoom.roomCode })
+                applyRoomSnapshot(joinResponse)
+            } else {
+                setError(joinResponse.errorMessage || 'Failed to join room.')
+            }
+        }
+
+        joinRoom()
+
+        return () => {
+            isMounted = false
+        }
+    }, [applyRoomSnapshot, createdRoom, setGameStore])
+
+    useEffect(() => {
+        const cleanupJoined = gameHubService.onPlayerJoined((player) => {
+            if (!player) {
+                return
+            }
+            upsertPlayer(player)
+            addChatMessage({
+                playerId: 'system',
+                playerName: 'System',
+                message: `${player.name} joined`,
+                messageType: 'System',
+            })
+        })
+
+        const cleanupLeft = gameHubService.onPlayerLeft((player) => {
+            if (!player) {
+                return
+            }
+            removePlayer(player.id)
+            addChatMessage({
+                playerId: 'system',
+                playerName: 'System',
+                message: `${player.name} left`,
+                messageType: 'System',
+            })
+        })
+
+        return () => {
+            cleanupJoined()
+            cleanupLeft()
+        }
+    }, [addChatMessage, removePlayer, upsertPlayer])
+
+    const systemMessages = chatMessages.filter(
+        (message) => message.messageType === 'System'
+    )
+    const canStartGame = players.length >= 2 && !!createdRoom
+    const canInvite = !!createdRoom
+    const isConfigLocked = !!createdRoom
 
     const data = [
         {
@@ -100,55 +195,139 @@ export default function GameConfig() {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg p-8 rounded-lg shadow-xl">
-                <h1 className="text-2xl font-bold text-gray-800 mb-8 text-center">
-                    Game Settings
-                </h1>
-                <div className="flex flex-col gap-6">
-                    {data.map((d) => {
-                        return (
-                            <div key={d.type} className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-gray-700">
-                                    {d.type}
-                                </label>
-                                <DoodleDashInput
-                                    type="number"
-                                    placeHolder=""
-                                    onChange={d.onChange}
-                                    value={d.data.toString()}
+            <div className="w-full max-w-4xl flex flex-col gap-6 lg:flex-row">
+                <div className="bg-white w-full lg:max-w-lg p-8 rounded-lg shadow-xl">
+                    <h1 className="text-2xl font-bold text-gray-800 mb-8 text-center">
+                        Game Settings
+                    </h1>
+                    <div className="flex flex-col gap-6">
+                        {data.map((d) => {
+                            return (
+                                <div
+                                    key={d.type}
+                                    className="flex flex-col gap-2"
+                                >
+                                    <label className="text-sm font-medium text-gray-700">
+                                        {d.type}
+                                    </label>
+                                    <DoodleDashInput
+                                        type="number"
+                                        placeHolder=""
+                                        onChange={d.onChange}
+                                        value={d.data.toString()}
+                                        disabled={isConfigLocked}
+                                    />
+                                </div>
+                            )
+                        })}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-gray-700">
+                                Custom Words
+                            </label>
+                            <textarea
+                                className={`h-32 w-full p-2 border-2 rounded-sm resize-none text-lg ${
+                                    isConfigLocked
+                                        ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
+                                        : 'border-emerald-400 outline-emerald-600'
+                                }`}
+                                placeholder="Enter words separated by commas..."
+                                onChange={(
+                                    event: React.ChangeEvent<HTMLTextAreaElement>
+                                ) => {
+                                    setCustomWords(event.target.value)
+                                }}
+                                disabled={isConfigLocked}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {createdRoom ? (
+                                <>
+                                    <DoodleDashButton
+                                        size="l"
+                                        label="Start Game"
+                                        isLoading={isLoading}
+                                        isLoadingLabel="Starting..."
+                                        onClick={handleStartGameButton}
+                                        disabled={!canStartGame}
+                                    />
+                                    {!canStartGame && (
+                                        <p className="text-sm text-gray-500 text-center">
+                                            Need at least 2 players to start.
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <DoodleDashButton
+                                    size="l"
+                                    label="Create Room"
+                                    isLoading={isLoading}
+                                    isLoadingLabel="Creating..."
+                                    onClick={handleCreateRoomButton}
                                 />
-                            </div>
-                        )
-                    })}
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Custom Words
-                        </label>
-                        <textarea
-                            className="h-32 w-full p-2 border-2 border-emerald-400 rounded-sm outline-emerald-600 resize-none text-lg"
-                            placeholder="Enter words separated by commas..."
-                            onChange={(
-                                event: React.ChangeEvent<HTMLTextAreaElement>
-                            ) => {
-                                setCustomWords(event.target.value)
-                            }}
+                            )}
+                        </div>
+                        {error && (
+                            <p className="text-red-500 text-center text-sm">
+                                {error}
+                            </p>
+                        )}
+                        <DoodleDashButton
+                            size="l"
+                            label="Invite"
+                            onClick={handleInviteGameButton}
+                            disabled={!canInvite}
                         />
                     </div>
-                    <DoodleDashButton
-                        size="l"
-                        label={isLoading ? 'Starting...' : 'Start Game'}
-                        onClick={handleStartGameButton}
-                    />
-                    {error && (
-                        <p className="text-red-500 text-center text-sm">
-                            {error}
-                        </p>
-                    )}
-                    <DoodleDashButton
-                        size="l"
-                        label="Invite"
-                        onClick={handleInviteGameButton}
-                    />
+                </div>
+                <div className="bg-white w-full lg:max-w-sm p-6 rounded-lg shadow-xl">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                        Lobby
+                    </h2>
+                    <div className="mb-4">
+                        <h3 className="text-sm font-medium text-gray-600 mb-2">
+                            Players ({players.length})
+                        </h3>
+                        <div className="space-y-2">
+                            {players.length === 0 && (
+                                <p className="text-sm text-gray-500">
+                                    Waiting for players...
+                                </p>
+                            )}
+                            {players.map((player) => (
+                                <div
+                                    key={player.id}
+                                    className="flex items-center justify-between bg-gray-50 p-2 rounded-sm"
+                                >
+                                    <span className="text-sm text-gray-800">
+                                        {player.name}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        {player.score}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-medium text-gray-600 mb-2">
+                            Activity
+                        </h3>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {systemMessages.length === 0 && (
+                                <p className="text-sm text-gray-500">
+                                    No activity yet.
+                                </p>
+                            )}
+                            {systemMessages.map((message, index) => (
+                                <div
+                                    key={`${message.playerId}-${index}`}
+                                    className="text-sm text-gray-700 bg-emerald-50 p-2 rounded-sm"
+                                >
+                                    {message.message}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

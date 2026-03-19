@@ -2,20 +2,37 @@ import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
 import { useLocalInputs } from '../store/inputStore'
 import { useGameStore } from '../store/gameStore'
+import { gameHubService } from '../services/gameHubService'
+import { useState } from 'react'
 
 export default function Home() {
     const playerName = useLocalInputs((state) => state.localInputs.playerName)
     const setPlayerName = useLocalInputs((state) => state.setPlayerName)
     const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
-    const setRoomCode = useGameStore((state) => state.setRoomCode)
+    const setGameStore = useGameStore((state) => state.setGameStore)
+    const applyRoomSnapshot = useGameStore((state) => state.applyRoomSnapshot)
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const roomCodeFromUrl = window.location.pathname.slice(1) || null
 
-    function handleButtonClicked() {
+    async function handleButtonClicked() {
         if (playerName?.length && playerName.length > 0) {
             if (roomCodeFromUrl) {
-                setRoomCode(roomCodeFromUrl)
-                setCurrentScreen('ROOM')
+                setIsLoading(true)
+                setError(null)
+                const joinResponse = await gameHubService.joinRoom(
+                    roomCodeFromUrl,
+                    playerName
+                )
+                if (joinResponse.success) {
+                    setGameStore({ roomCode: roomCodeFromUrl })
+                    applyRoomSnapshot(joinResponse)
+                    setCurrentScreen('ROOM')
+                } else {
+                    setError(joinResponse.errorMessage || 'Failed to join room.')
+                }
+                setIsLoading(false)
             } else {
                 setCurrentScreen('GAMECONFIG')
             }
@@ -55,8 +72,15 @@ export default function Home() {
                             label={
                                 roomCodeFromUrl ? 'Join Room' : 'Create Room'
                             }
+                            isLoading={isLoading}
+                            isLoadingLabel="Joining..."
                             onClick={handleButtonClicked}
                         />
+                        {error && (
+                            <p className="text-red-500 text-center text-sm">
+                                {error}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>

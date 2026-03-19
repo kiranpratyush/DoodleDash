@@ -1,4 +1,4 @@
-import { type CreateRoomRequest, type CreateRoomResponse } from '../../types'
+import { type CreateRoomRequest, type CreateRoomResponse } from '../types'
 
 function handleCommonError(error: unknown): CreateRoomResponse {
     if (error instanceof Error && error.name === 'AbortError') {

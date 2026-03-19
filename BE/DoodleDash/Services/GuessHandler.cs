@@ -13,7 +13,7 @@ namespace DoodleDash.Services
             if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
                 return;
 
-            ChatMessages? chatMessage = null;
+            ChatMessage? chatMessage = null;
             Player? updatedPlayer = null;
             bool shouldBroadcastChat = false;
             bool shouldBroadcastScore = false;
@@ -51,7 +51,7 @@ namespace DoodleDash.Services
                     updatedPlayer = player;
                     shouldBroadcastScore = true;
 
-                    chatMessage = new ChatMessages
+                    chatMessage = new ChatMessage
                     {
                         PlayerId = player.Id,
                         PlayerName = player.Name,
@@ -61,7 +61,7 @@ namespace DoodleDash.Services
                 }
                 else
                 {
-                    chatMessage = new ChatMessages
+                    chatMessage = new ChatMessage
                     {
                         PlayerId = player.Id,
                         PlayerName = player.Name,

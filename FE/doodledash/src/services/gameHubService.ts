@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr'
-import { type DataPoint } from '../types/pos'
-import { type RoomSnapshotResponse } from '../../types'
+import { type DrawPoint } from '../types'
+import { type RoomSnapshotResponse } from '../types'
 
 class GameHubService {
     private connection: signalR.HubConnection
@@ -50,7 +50,9 @@ class GameHubService {
         try {
             response = await this.connection.invoke<RoomSnapshotResponse>(
                 'JoinRoom',
-                [roomCode, playerName, playerId]
+                roomCode,
+                playerName,
+                playerId
             )
         } catch (error) {
             console.log('error', error)
@@ -63,14 +65,63 @@ class GameHubService {
         return response
     }
 
-    async sendDataPoints(point: DataPoint) {
-        // Changed method name to match backend's Draw method
-        await this.connection.invoke('DrawBroadCast', point)
+    async sendDataPoints(point: DrawPoint) {
+        await this.connection.invoke(
+            'OnDrawData',
+            point.roomCode,
+            point.playerId,
+            [point.x0, point.y0, point.x1, point.y1]
+        )
     }
 
-    onReceiveDataPoints(callback: (point: DataPoint) => void) {
-        // Changed event name to match backend's ReceiveDraw event
-        this.connection.on('ReceiveDraw', callback)
+    async startGame(roomCode: string) {
+        await this.connection.invoke('StartGame', roomCode)
+    }
+
+    OnDrawData(callback: (point: DrawPoint) => void) {
+        const innerCallback = (args: number[]) => {
+            const point: DrawPoint = {
+                color: 'red',
+                playerId: 'random',
+                roomCode: 'xyz',
+                x0: args[0],
+                y0: args[1],
+                x1: args[2],
+                y1: args[3],
+                brushSize: 2,
+            }
+            callback(point)
+        }
+
+        this.connection.on('OnDrawData', innerCallback)
+
+        return () => {
+            this.connection.off('OnDrawData', innerCallback)
+        }
+    }
+
+    onPlayerJoined(callback: (player: RoomSnapshotResponse['player']) => void) {
+        const innerCallback = (player: RoomSnapshotResponse['player']) => {
+            callback(player)
+        }
+
+        this.connection.on('PlayerJoined', innerCallback)
+
+        return () => {
+            this.connection.off('PlayerJoined', innerCallback)
+        }
+    }
+
+    onPlayerLeft(callback: (player: RoomSnapshotResponse['player']) => void) {
+        const innerCallback = (player: RoomSnapshotResponse['player']) => {
+            callback(player)
+        }
+
+        this.connection.on('PlayerLeft', innerCallback)
+
+        return () => {
+            this.connection.off('PlayerLeft', innerCallback)
+        }
     }
 }
 
