@@ -5,23 +5,15 @@ import { Player } from '../components/player'
 import { Guess } from '../components/guess'
 import { GuessWord } from '../components/guessWord'
 import { Timer } from '../components/timer'
-
-import { type Pos, type DataPoint } from '../types/pos'
-import { drawingHubService } from '../services/drawingHubService'
+import { gameHubService } from '../services/gameHubService'
+import { type Pos } from '../../types'
 
 export default function Room() {
     const [color, setColor] = useState('#000000')
     const [brushSize] = useState(3)
 
-    useEffect(() => {
-        drawingHubService.start()
-        return () => {
-            drawingHubService.stop()
-        }
-    }, [])
-
     function sendDraw(prevPos: Pos, curPos: Pos) {
-        drawingHubService.sendDataPoints({
+        gameHubService.sendDataPoints({
             x0: prevPos.x,
             y0: prevPos.y,
             x1: curPos.x,
@@ -31,10 +23,6 @@ export default function Room() {
             playerId: '1',
         })
         console.log([prevPos.x, prevPos.y, curPos.x, curPos.y])
-    }
-
-    function onReceiveDraw(callback: (point: DataPoint) => void) {
-        drawingHubService.onReceiveDataPoints(callback)
     }
 
     return (
@@ -56,8 +44,7 @@ export default function Room() {
                         brushSize={brushSize}
                         isDrawingAllowed={true}
                         throttleInMs={50}
-                        sendDraw={sendDraw}
-                        onReceiveDraw={onReceiveDraw}
+                    }
                     />
                     <ColorPicker
                         activeColor={color}

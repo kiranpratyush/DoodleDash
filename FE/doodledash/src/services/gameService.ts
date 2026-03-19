@@ -1,6 +1,6 @@
-import { type CreateGameRequest, type CreateGameResponse } from '../types/api'
+import { type CreateRoomRequest, type CreateRoomResponse } from '../../types'
 
-function handleCommonError(error: unknown): CreateGameResponse {
+function handleCommonError(error: unknown): CreateRoomResponse {
     if (error instanceof Error && error.name === 'AbortError') {
         return {
             isSuccess: false,
@@ -20,9 +20,9 @@ function handleCommonError(error: unknown): CreateGameResponse {
     }
 }
 
-export async function startGame(
-    gameRequest: CreateGameRequest
-): Promise<CreateGameResponse> {
+export async function createRoom(
+    gameRequest: CreateRoomRequest
+): Promise<CreateRoomResponse> {
     const url = `${import.meta.env.PUBLIC_BASE_URL}/${import.meta.env.PUBLIC_ROOM_ENDPOINT}`
 
     try {
@@ -51,6 +51,7 @@ export async function startGame(
             isSuccess: true,
             data: {
                 playerId: data.playerId,
+                playerName: data.playerName ?? gameRequest.playerName,
                 roomCode: data.roomCode,
             },
         }

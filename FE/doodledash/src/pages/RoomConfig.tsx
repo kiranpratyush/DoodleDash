@@ -3,7 +3,7 @@ import { DoodleDashButton } from '../design-system/button'
 import { DoodleDashInput } from '../design-system/input'
 import { useLocalInputs } from '../store/inputStore'
 import { useGameStore } from '../store/gameStore'
-import { startGame } from '../services/gameService'
+import { createRoom } from '../services/gameService'
 
 export default function GameConfig() {
     const setMaxPlayers = useLocalInputs((state) => state.setMaxPlayers)
@@ -26,7 +26,7 @@ export default function GameConfig() {
         setError(null)
         setIsLoading(true)
 
-        const response = await startGame({
+        const response = await createRoom({
             playerName: localInputs.playerName || 'Host',
             maxAllowedPlayers: localInputs.maxPlayers,
             totalRounds: localInputs.maxRounds,

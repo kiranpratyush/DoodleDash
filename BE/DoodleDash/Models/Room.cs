@@ -9,44 +9,66 @@ namespace DoodleDash.Models
 
     public enum MessageType { User, System }
 
-    public record Hints(int Index, char? Letter);
+
+    public class Hint
+    {
+        [JsonPropertyName("index")]
+        public required int Index;
+
+        [JsonPropertyName("character")]
+        public required char Character;
+    }
 
 
     public class Response
     {
+        [JsonPropertyName("success")]
         public bool Success { get; set; }
+        [JsonPropertyName("errorCode")]
         public string? ErrorCode { get; set; }
+
+        [JsonPropertyName("errorMessage")]
         public string? ErrorMessage { get; set; }
     }
 
     public class Player
     {
+        [JsonPropertyName("name")]
         public required string Name { get; set; }
 
+        [JsonPropertyName("id")]
         public required string Id { get; set; }
 
+        [JsonPropertyName("connectionID")]
         public required string ConnectionId { get; set; }
 
+        [JsonPropertyName("score")]
         public int Score { get; set; } = 0;
 
     }
 
-    public class ChatMessages
+    public class ChatMessage
     {
+        [JsonPropertyName("playerId")]
         public required string PlayerId { get; set; }
 
+        [JsonPropertyName("playerName")]
         public required string PlayerName { get; set; }
 
+        [JsonPropertyName("message")]
         public string Message { get; set; } = "";
 
+        [JsonPropertyName("messageType")]
         public MessageType MessageType { get; set; }
     }
 
     public class WordHint
     {
+        [JsonPropertyName("length")]
         public int Length { get; set; }
 
-        public List<Hints> RevealedIndices { get; set; } = [];
+        [JsonPropertyName("revealedIndices")]
+        public List<Hint> RevealedIndices { get; set; } = [];
     }
 
     public class GameRoom
@@ -61,9 +83,9 @@ namespace DoodleDash.Models
         [Required]
         public required Int64 MaxPlayerCount { get; set; }
 
-        public string ? LobbyMessage { get; set; } = "";
+        public string? LobbyMessage { get; set; } = "";
 
-        public string ? RoundEndTime { get; set; }
+        public string? RoundEndTime { get; set; }
 
         public List<string> CustomWords { get; set; } = [];
 
@@ -89,7 +111,7 @@ namespace DoodleDash.Models
 
         public HashSet<string> GuessedPlayerIds { get; set; } = [];
 
-        public List<ChatMessages> ChatMessages { get; set; } = [];
+        public List<ChatMessage> ChatMessages { get; set; } = [];
 
         public WordHint? CurrentWordHint { get; set; }
 
@@ -102,32 +124,46 @@ namespace DoodleDash.Models
 
     public class GameSnapShotResponse
     {
+        [JsonPropertyName("gameStatus")]
         public GameStatus Status { get; set; } = GameStatus.Lobby;
 
+        [JsonPropertyName("lobbyMessage")]
         public string? LobbyMessage { get; set; } = "";
 
+        [JsonPropertyName("roundNumber")]
         public int RoundNumber { get; set; }
 
+        [JsonPropertyName("totalRounds")]
         public int TotalRounds { get; set; }
 
+        [JsonPropertyName("drawTimeSeconds")]
         public int DrawTimeSeconds { get; set; }
 
-        public List<ChatMessages> ChatMessages { get; set; } = [];
+        [JsonPropertyName("chatMessages")]
+        public List<ChatMessage> ChatMessages { get; set; } = [];
 
+        [JsonPropertyName("players")]
         public List<Player> Players { get; set; } = [];
 
+        [JsonPropertyName("player")]
         public Player? ActivePlayer { get; set; }
 
+        [JsonPropertyName("currentWordHint")]
         public WordHint? CurrentWordHint { get; set; }
 
+        [JsonPropertyName("roundEndTime")]
         public string? RoundEndTime { get; set; }
 
+        [JsonPropertyName("drawData")]
         public List<List<float>> DrawData { get; set; } = [];
 
+        [JsonPropertyName("selectionEndTime")]
         public string? SelectionEndTime { get; set; }
 
+        [JsonPropertyName("lastRoundResult")]
         public RoundOverResponse? LastRoundResult { get; set; }
 
+        [JsonPropertyName("finalResult")]
         public GameOverResponse? FinalResult { get; set; }
 
     }
@@ -185,24 +221,33 @@ namespace DoodleDash.Models
         public int PointsAwarded { get; set; }
     }
 
-    public class RoomSnapShotResponse:Response
-    {   public Player? Player { get; set; }
+    public class RoomSnapShotResponse : Response
+    {
+        [JsonPropertyName("player")]
+        public Player? Player { get; set; }
+        [JsonPropertyName("snapShotResponse")]
         public GameSnapShotResponse? SnapShotResponse { get; set; }
 
     }
 
     public class RoundOverResponse : Response
     {
+        [JsonPropertyName("players")]
         public List<Player> Players { get; set; } = [];
+
+        [JsonPropertyName("correctWord")]
         public string CorrectWord { get; set; } = "";
 
+        [JsonPropertyName("roundNumber")]
         public int RoundNumber { get; set; }
     }
 
     public class GameOverResponse : Response
     {
+        [JsonPropertyName("finalScores")]
         public List<Player> FinalScores { get; set; } = [];
 
-        public  Player? Winner { get; set; }
+        [JsonPropertyName("winner")]
+        public Player? Winner { get; set; }
     }
 }

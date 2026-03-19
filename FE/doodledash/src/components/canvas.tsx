@@ -1,14 +1,13 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { setupResponsiveCanvas } from './canvasActions'
-import { type Pos, type DataPoint } from '../types/pos'
+import { type Pos } from '../../types'
+import { gameHubService } from '../services/gameHubService'
 
 interface Props {
     color: string
     brushSize: number
     isDrawingAllowed: boolean
     throttleInMs: number
-    sendDraw: (prevPos: Pos, currentPos: Pos) => void
-    onReceiveDraw?: (callback: (point: DataPoint) => void) => void
 }
 
 export function Canvas(prop: Props) {
@@ -39,7 +38,7 @@ export function Canvas(prop: Props) {
     }
 
     function sendDrawData(x: number, y: number) {
-        prop.sendDraw(prevNetWorkPosRef.current, { x, y })
+        gameHubService.sendDataPoints({ x, y })
         prevNetWorkPosRef.current = { x, y }
     }
 
@@ -86,7 +85,7 @@ export function Canvas(prop: Props) {
                 ctx.fillRect(0, 0, canvas.width, canvas.height)
             }
         }
-        prop.onReceiveDraw?.((point) => {
+        gameHubService.onReceiveDataPoints((point) => {
             draw(
                 { x: point.x0, y: point.y0 },
                 { x: point.x1, y: point.y1 },

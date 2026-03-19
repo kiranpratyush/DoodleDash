@@ -35,6 +35,7 @@ namespace DoodleDash.Services
                     : DefaultWords.GetRandomWords(30);
                 var room = new GameRoom
                 {
+                    Status = GameStatus.Lobby,
                     HostId = hostId,
                     HostName = roomRequest.PlayerName,
                     RoomCode = roomCode,

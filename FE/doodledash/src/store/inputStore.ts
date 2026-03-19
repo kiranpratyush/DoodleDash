@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { type LocalInputs } from '../types/players'
+import { type LocalInputs } from '../../types'
 type currentScreen = 'HOME' | 'GAMECONFIG' | 'ROOM'
 
 export interface InputStore {
