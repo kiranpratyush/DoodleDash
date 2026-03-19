@@ -64,8 +64,8 @@ export interface ChatMessage {
 export interface Player {
     name: string
     id: string
-    connectionId: string
-    score: number
+    connectionId?: string
+    score?: number
 }
 
 export interface Hint {
@@ -90,6 +90,7 @@ export interface RoundStartedResponse extends Response {
     roundEndTime?: string
     roundNumber: number
     currentWord?: string
+    roundDrawTimeSeconds: number
 }
 export interface GameOverResponse extends Response {
     finalScores: Player[]
@@ -121,6 +122,7 @@ export interface RoomSnapshotResponse extends Response {
 export interface GameStore {
     roomCode: string
     maxPlayerCount?: number
+    pendingStartGame?: boolean
     drawTimeSeconds: number
     wordSelectionEndTime?: string
     currentPlayer?: Player
@@ -131,7 +133,6 @@ export interface GameStore {
     totalRounds: number
     wordSelectionSeconds: number
     chatMessages: ChatMessage[]
-    activePlayer?: Player
     currentWordHint?: WordHint
     roundEndTime?: string
     selectionEndTime?: string
@@ -140,4 +141,5 @@ export interface GameStore {
     currentWordOptions: string[]
     lastRoundResult?: RoundOverResponse
     finalResult?: GameOverResponse
+    activePlayerId?: string
 }

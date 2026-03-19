@@ -48,6 +48,8 @@ namespace DoodleDash.Services
                 response.CurrentWordHint = room.CurrentWordHint;
                 response.RoundEndTime = room.RoundEndTime;
                 response.RoundNumber = room.CurrentRound;
+                response.RoundDrawTimeSeconds = room.DrawTimeSeconds;
+
 
                 activePlayerResponse = new RoundStartedResponse
                 {
@@ -56,7 +58,8 @@ namespace DoodleDash.Services
                     CurrentWordHint = room.CurrentWordHint,
                     RoundEndTime = room.RoundEndTime,
                     RoundNumber = room.CurrentRound,
-                    CurrentWord = room.CurrentWord
+                    CurrentWord = room.CurrentWord,
+                    RoundDrawTimeSeconds = room.DrawTimeSeconds
                 };
 
                 activePlayerConnectionId = room.ActivePlayer.ConnectionId;

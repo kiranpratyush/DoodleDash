@@ -4,7 +4,7 @@ import { type Pos } from '../types'
 import { gameHubService } from '../services/gameHubService'
 import { useGameStore } from '../store/gameStore'
 
-interface Props {
+export interface Props {
     color: string
     brushSize: number
     isDrawingAllowed: boolean

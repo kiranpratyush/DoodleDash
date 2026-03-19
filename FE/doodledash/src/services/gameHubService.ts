@@ -139,9 +139,11 @@ class GameHubService {
         }
     }
 
-    onStartWordSelection(callback: (options: string[]) => void) {
-        const innerCallback = (options: string[]) => {
-            callback(options)
+    onStartWordSelection(
+        callback: (options: string[], selectionTime: number) => void
+    ) {
+        const innerCallback = (options: string[], selectionTime: number) => {
+            callback(options, selectionTime)
         }
 
         this.connection.on('StartWordSelection', innerCallback)
@@ -152,10 +154,18 @@ class GameHubService {
     }
 
     onGameStarted(
-        callback: (activePlayerId: string, activePlayerName: string) => void
+        callback: (
+            activePlayerId: string,
+            activePlayerName: string,
+            drawTimeSeconds: number
+        ) => void
     ) {
-        const innerCallback = (activePlayerId: string, activePlayerName: string) => {
-            callback(activePlayerId, activePlayerName)
+        const innerCallback = (
+            activePlayerId: string,
+            activePlayerName: string,
+            drawTimeSeconds: number
+        ) => {
+            callback(activePlayerId, activePlayerName, drawTimeSeconds)
         }
 
         this.connection.on('GameStarted', innerCallback)

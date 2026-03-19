@@ -175,6 +175,8 @@ namespace DoodleDash.Models
         public string? RoundEndTime { get; set; }
         public int RoundNumber { get; set; }
         public string? CurrentWord { get; set; }
+
+        public int RoundDrawTimeSeconds { get; set; }
     }
 
     public class CreateRoomRequest

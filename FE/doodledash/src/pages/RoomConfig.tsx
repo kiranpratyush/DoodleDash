@@ -20,14 +20,11 @@ export default function GameConfig() {
     const upsertPlayer = useGameStore((state) => state.upsertPlayer)
     const removePlayer = useGameStore((state) => state.removePlayer)
     const addChatMessage = useGameStore((state) => state.addChatMessage)
+    const roomCode = useGameStore((state) => state.roomCode)
+    const activePlayer = useGameStore((state) => state.currentPlayer)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const hasJoinedRef = useRef(false)
-    const [createdRoom, setCreatedRoom] = useState<{
-        roomCode: string
-        playerId?: string
-        playerName: string
-    } | null>(null)
 
     const handleCreateRoomButton = async () => {
         setError(null)
@@ -43,13 +40,13 @@ export default function GameConfig() {
 
         if (response.isSuccess) {
             const playerName = response.data.playerName || 'Host'
-            const nextRoom = {
+            setGameStore({
+                currentPlayer: {
+                    name: playerName,
+                    id: response.data.playerId,
+                },
                 roomCode: response.data.roomCode,
-                playerId: response.data.playerId,
-                playerName,
-            }
-            setCreatedRoom(nextRoom)
-            setGameStore({ roomCode: response.data.roomCode })
+            })
             setIsLoading(false)
             return
         } else {
@@ -60,28 +57,22 @@ export default function GameConfig() {
     }
 
     const handleStartGameButton = async () => {
-        if (!createdRoom) {
+        if (!roomCode) {
             return
         }
-
         setIsLoading(true)
-        try {
-            await gameHubService.startGame(createdRoom.roomCode)
-            setCurrentScreen('ROOM')
-        } catch (err) {
-            console.error('Failed to start game:', err)
-            setError('Failed to start game.')
-        }
-        setIsLoading(false)
+        setError(null)
+        setGameStore({ pendingStartGame: true })
+        setCurrentScreen('ROOM')
     }
 
     const handleInviteGameButton = async () => {
-        if (!createdRoom) {
+        if (!roomCode) {
             setError('Create a room first to invite players.')
             return
         }
 
-        const inviteUrl = `${window.location.origin}/${createdRoom.roomCode}`
+        const inviteUrl = `${window.location.origin}/${roomCode}`
         try {
             await navigator.clipboard.writeText(inviteUrl)
             alert('Invite link copied to clipboard!')
@@ -92,30 +83,26 @@ export default function GameConfig() {
     }
 
     useEffect(() => {
-        let isMounted = true
-
         const joinRoom = async () => {
             if (hasJoinedRef.current) {
                 return
             }
-
-            if (!createdRoom) {
+            if (!roomCode) {
                 return
             }
+            const playerName = activePlayer
+                ? activePlayer.name
+                : localInputs.playerName
+            const playerId = activePlayer ? activePlayer.id : undefined
 
             const joinResponse = await gameHubService.joinRoom(
-                createdRoom.roomCode,
-                createdRoom.playerName,
-                createdRoom.playerId
+                roomCode,
+                playerName || '',
+                playerId
             )
-
-            if (!isMounted) {
-                return
-            }
-
             if (joinResponse.success) {
                 hasJoinedRef.current = true
-                setGameStore({ roomCode: createdRoom.roomCode })
+                setGameStore({ roomCode: roomCode })
                 applyRoomSnapshot(joinResponse)
             } else {
                 setError(joinResponse.errorMessage || 'Failed to join room.')
@@ -123,11 +110,7 @@ export default function GameConfig() {
         }
 
         joinRoom()
-
-        return () => {
-            isMounted = false
-        }
-    }, [applyRoomSnapshot, createdRoom, setGameStore])
+    }, [applyRoomSnapshot, setGameStore, roomCode])
 
     useEffect(() => {
         const cleanupJoined = gameHubService.onPlayerJoined((player) => {
@@ -165,9 +148,9 @@ export default function GameConfig() {
     const systemMessages = chatMessages.filter(
         (message) => message.messageType === 'System'
     )
-    const canStartGame = players.length >= 2 && !!createdRoom
-    const canInvite = !!createdRoom
-    const isConfigLocked = !!createdRoom
+    const canStartGame = players.length >= 2 && !!roomCode
+    const canInvite = !!roomCode
+    const isConfigLocked = !!roomCode
 
     const data = [
         {
@@ -240,7 +223,7 @@ export default function GameConfig() {
                             />
                         </div>
                         <div className="flex flex-col gap-2">
-                            {createdRoom ? (
+                            {roomCode ? (
                                 <>
                                     <DoodleDashButton
                                         size="l"

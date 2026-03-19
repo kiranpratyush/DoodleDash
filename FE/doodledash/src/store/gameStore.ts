@@ -17,6 +17,7 @@ interface GameStoreWithActions extends GameStore {
 
 const defaultGameStore: GameStore = {
     roomCode: '',
+    pendingStartGame: false,
     drawTimeSeconds: 0,
     players: [],
     gameStatus: 'Lobby',
@@ -39,7 +40,6 @@ const mapGameSnapshotToState = (
     drawTimeSeconds: snapshot.drawTimeSeconds ?? fallback.drawTimeSeconds,
     chatMessages: snapshot.chatMessages ?? fallback.chatMessages,
     players: snapshot.players ?? fallback.players,
-    activePlayer: snapshot.player ?? fallback.activePlayer,
     currentWordHint: snapshot.currentWordHint ?? fallback.currentWordHint,
     roundEndTime: snapshot.roundEndTime ?? fallback.roundEndTime,
     drawData: snapshot.drawData ?? fallback.drawData,
