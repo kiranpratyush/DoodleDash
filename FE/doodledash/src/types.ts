@@ -83,6 +83,14 @@ export interface RoundOverResponse extends Response {
     correctWord: string
     roundNumber: number
 }
+
+export interface RoundStartedResponse extends Response {
+    activePlayer?: Player
+    currentWordHint?: WordHint
+    roundEndTime?: string
+    roundNumber: number
+    currentWord?: string
+}
 export interface GameOverResponse extends Response {
     finalScores: Player[]
     winner?: Player

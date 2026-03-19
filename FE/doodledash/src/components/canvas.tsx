@@ -99,7 +99,7 @@ export function Canvas(prop: Props) {
                 ctx.fillRect(0, 0, canvas.width, canvas.height)
             }
         }
-        gameHubService.OnDrawData((point) => {
+        const cleanup = gameHubService.OnDrawData((point) => {
             draw(
                 { x: point.x0, y: point.y0 },
                 { x: point.x1, y: point.y1 },
@@ -107,6 +107,9 @@ export function Canvas(prop: Props) {
                 point.brushSize
             )
         })
+        return () => {
+            cleanup()
+        }
     }, [])
 
     return (
