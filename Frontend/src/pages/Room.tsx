@@ -198,8 +198,7 @@ export default function Room() {
         const startPendingGame = async () => {
             try {
                 await gameHubService.startGame(roomCode)
-            } catch (err) {
-                console.error('Failed to start game:', err)
+            } catch {
                 setGameStore({ pendingStartGame: false })
             }
         }
@@ -227,7 +226,7 @@ export default function Room() {
                 <div className="flex-1 max-h-[70%]">
                     <Player />
                 </div>
-                <div className="flex flex-col h-[80vh] rounded-sm flex-3 relative">
+                <div className="flex flex-col h-[80vh] rounded-sm flex-3 relative max-w-xlg">
                     <Canvas
                         color={color}
                         brushSize={brushSize}
