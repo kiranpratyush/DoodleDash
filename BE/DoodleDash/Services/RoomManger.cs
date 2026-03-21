@@ -102,6 +102,7 @@ namespace DoodleDash.Services
                     var snapshot = new GameSnapShotResponse
                     {
                         Status = room.Status,
+                        HostId = room.HostId,
                         LobbyMessage = room.LobbyMessage,
                         RoundNumber = room.CurrentRound,
                         TotalRounds = room.TotalRounds,
@@ -165,6 +166,64 @@ namespace DoodleDash.Services
             if (selectionEndTime != null)
             {
                 _ = ScheduleSelectionTimeout(roomCode, DateTime.Now.AddSeconds(5000).ToUniversalTime().ToString());
+            }
+        }
+
+        public async Task ReplayGame(string roomCode, string playerId, string connectionId)
+        {
+            List<Player> resetPlayers = [];
+            bool shouldStartGame = false;
+
+            lock (GetRoomLock(roomCode))
+            {
+                if (!Rooms.TryGetValue(roomCode, out GameRoom? room) || room == null || room.IsExpired)
+                    return;
+
+                if (!room.Players.TryGetValue(playerId, out var player))
+                    return;
+
+                if (player.ConnectionId != connectionId)
+                    return;
+
+                if (room.HostId != playerId)
+                    return;
+
+                if (room.Status != GameStatus.GameEnded)
+                    return;
+
+                room.Status = GameStatus.Lobby;
+                room.CurrentRound = 1;
+                room.ActivePlayer = null;
+                room.CurrentWord = null;
+                room.CurrentWordHint = null;
+                room.RoundEndTime = null;
+                room.SelectionEndTime = null;
+                room.CurrentWordOptions = [];
+                room.GuessedPlayerIds.Clear();
+                room.ChatMessages.Clear();
+                room.LastRoundResult = null;
+                room.FinalResult = null;
+
+                foreach (var existingPlayer in room.Players.Values)
+                {
+                    existingPlayer.Score = 0;
+                    resetPlayers.Add(existingPlayer);
+                }
+
+                CanvasHistory.TryRemove(roomCode, out _);
+                shouldStartGame = room.Players.Count >= 2;
+            }
+
+            await hubContext.Clients.Group(roomCode).SendAsync("ReplayStarted");
+
+            foreach (var resetPlayer in resetPlayers)
+            {
+                await hubContext.Clients.Group(roomCode).SendAsync("PlayerScoreUpdated", resetPlayer);
+            }
+
+            if (shouldStartGame)
+            {
+                await StartGame(roomCode);
             }
         }
 

@@ -99,6 +99,10 @@ class GameHubService {
         await this.connection.invoke('GuessWord', roomCode, guessText)
     }
 
+    async replayGame(roomCode: string) {
+        await this.connection.invoke('ReplayGame', roomCode)
+    }
+
     OnDrawData(callback: (point: DrawPoint) => void) {
         const innerCallback = (args: number[]) => {
             const colorInt = args[5] ?? 0
@@ -243,6 +247,18 @@ class GameHubService {
 
         return () => {
             this.connection.off('GameOver', innerCallback)
+        }
+    }
+
+    onReplayStarted(callback: () => void) {
+        const innerCallback = () => {
+            callback()
+        }
+
+        this.connection.on('ReplayStarted', innerCallback)
+
+        return () => {
+            this.connection.off('ReplayStarted', innerCallback)
         }
     }
 }

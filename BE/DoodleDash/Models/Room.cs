@@ -127,6 +127,9 @@ namespace DoodleDash.Models
         [JsonPropertyName("gameStatus")]
         public GameStatus Status { get; set; } = GameStatus.Lobby;
 
+        [JsonPropertyName("hostId")]
+        public string? HostId { get; set; }
+
         [JsonPropertyName("lobbyMessage")]
         public string? LobbyMessage { get; set; } = "";
 

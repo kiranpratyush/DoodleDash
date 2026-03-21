@@ -34,6 +34,7 @@ const mapGameSnapshotToState = (
     fallback: GameStore
 ): Partial<GameStore> => ({
     gameStatus: snapshot.gameStatus ?? fallback.gameStatus,
+    hostId: snapshot.hostId ?? fallback.hostId,
     lobbyMessage: snapshot.lobbyMessage ?? fallback.lobbyMessage,
     currentRound: snapshot.roundNumber ?? fallback.currentRound,
     totalRounds: snapshot.totalRounds ?? fallback.totalRounds,

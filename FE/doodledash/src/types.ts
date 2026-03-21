@@ -99,6 +99,7 @@ export interface GameOverResponse extends Response {
 
 export interface GameSnapShotResponse {
     gameStatus: GameStatus
+    hostId?: string
     lobbyMessage?: string
     roundNumber: number
     totalRounds: number
@@ -121,6 +122,7 @@ export interface RoomSnapshotResponse extends Response {
 
 export interface GameStore {
     roomCode: string
+    hostId?: string
     maxPlayerCount?: number
     pendingStartGame?: boolean
     drawTimeSeconds: number

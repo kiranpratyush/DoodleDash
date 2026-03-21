@@ -56,6 +56,15 @@ namespace DoodleDash.Hubs
             await roomManager.StartGame(roomCode);
         }
 
+        public async Task ReplayGame(string roomCode)
+        {
+            string? playerId = Context.Items["PlayerId"] as string;
+            if (playerId == null)
+                return;
+
+            await roomManager.ReplayGame(roomCode, playerId, Context.ConnectionId);
+        }
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             string? playerId = Context.Items["PlayerId"] as string;

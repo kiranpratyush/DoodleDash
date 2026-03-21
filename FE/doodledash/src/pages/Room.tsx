@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Canvas, type Props as CanvasProps } from '../components/canvas'
+import { Canvas } from '../components/canvas'
 import {
     ColorPicker,
-    type Props as ColorPickerProps,
 } from '../components/colorPicker'
 import { Player } from '../components/player'
 import { Guess } from '../components/guess'
@@ -10,12 +9,16 @@ import { GuessWord } from '../components/guessWord'
 import { Timer } from '../components/timer'
 import { useGameStore } from '../store/gameStore'
 import { gameHubService } from '../services/gameHubService'
+import { GameOver } from '../components/GameOver'
+import { RoundOver } from '../components/RoundOver'
 import { WordPicker, WaitingForWordToBeChoosen } from '../components/WordPicker'
 
 type OverlayState =
-    | { type: 'default'; options: CanvasProps & ColorPickerProps }
+    | { type: 'default';}
     | { type: 'select'; options: string[]; time: number }
     | { type: 'waiting'; activePlayerName: string; time: number }
+    | { type: 'roundover' }
+    | { type: 'gameover' }
 
 function RenderOverlay(overlay: OverlayState) {
     switch (overlay.type) {
@@ -30,6 +33,10 @@ function RenderOverlay(overlay: OverlayState) {
                     time={overlay.time}
                 />
             )
+        case 'roundover':
+            return <RoundOver />
+        case 'gameover':
+            return <GameOver />
         case 'default':
             return
     }
@@ -38,6 +45,7 @@ function RenderOverlay(overlay: OverlayState) {
 export default function Room() {
     const [color, setColor] = useState('#000000')
     const [brushSize] = useState(3)
+    const [canvasClearSignal, setCanvasClearSignal] = useState(0)
     const roomCode = useGameStore((state) => state.roomCode)
     const gameStatus = useGameStore((state) => state.gameStatus)
     const activePlayerId = useGameStore((state) => state.activePlayerId)
@@ -49,17 +57,8 @@ export default function Room() {
     const currentPlayer = useGameStore((state) => state.currentPlayer)
     const roundEndTime = useGameStore((state) => state.roundEndTime)
     const roundDrawTimeSeconds = useGameStore((state) => state.drawTimeSeconds)
-    const defaultOverlayOptions = {
-        color: color,
-        setActiveColor: setColor,
-        throttleInMs: 50,
-        isDrawingAllowed: false,
-        brushSize: brushSize,
-        activeColor: color,
-    }
     const [overlay, setOverlay] = useState<OverlayState>({
         type: 'default',
-        options: defaultOverlayOptions,
     })
 
     useEffect(() => {
@@ -97,19 +96,23 @@ export default function Room() {
     useEffect(() => {
         const cleanupStartSelection = gameHubService.onStartWordSelection(
             (options, selectionTime: number) => {
+                setCanvasClearSignal((value) => value + 1)
                 setGameStore({
                     gameStatus: 'SelectingWord',
                     pendingStartGame: false,
+                    drawData: [],
                 })
                 setOverlay({ type: 'select', options, time: selectionTime })
             }
         )
         const cleanupGameStarted = gameHubService.onGameStarted(
             (activePlayerId, activePlayerName, drawTimeInSecond: number) => {
+                setCanvasClearSignal((value) => value + 1)
                 setGameStore({
                     gameStatus: 'SelectingWord',
                     activePlayerId: activePlayerId,
                     pendingStartGame: false,
+                    drawData: [],
                 })
                 setOverlay({
                     type: 'waiting',
@@ -119,7 +122,7 @@ export default function Room() {
             }
         )
         const cleanupRoundStarted = gameHubService.onRoundStarted((payload) => {
-            setOverlay({ type: 'default', options: defaultOverlayOptions })
+            setOverlay({ type: 'default' })
             setGameStore({
                 gameStatus: 'Drawing',
                 currentWordHint: payload.currentWordHint,
@@ -141,7 +144,7 @@ export default function Room() {
             }
         )
         const cleanupRoundOver = gameHubService.onRoundOver((payload) => {
-            setOverlay({ type: 'default', options: defaultOverlayOptions })
+            setOverlay({ type: 'roundover' })
             setGameStore({
                 gameStatus: 'RoundEnded',
                 lastRoundResult: payload,
@@ -151,12 +154,28 @@ export default function Room() {
             })
         })
         const cleanupGameOver = gameHubService.onGameOver((payload) => {
-            setOverlay({ type: 'default', options: defaultOverlayOptions })
+            setOverlay({ type: 'gameover' })
             setGameStore({
                 gameStatus: 'GameEnded',
                 finalResult: payload,
                 currentWord: undefined,
                 roundEndTime: undefined,
+                activePlayerId: undefined,
+            })
+        })
+        const cleanupReplayStarted = gameHubService.onReplayStarted(() => {
+            setCanvasClearSignal((value) => value + 1)
+            setOverlay({ type: 'default'})
+            setGameStore({
+                gameStatus: 'Lobby',
+                chatMessages: [],
+                drawData: [],
+                currentWord: undefined,
+                currentWordHint: undefined,
+                roundEndTime: undefined,
+                selectionEndTime: undefined,
+                lastRoundResult: undefined,
+                finalResult: undefined,
                 activePlayerId: undefined,
             })
         })
@@ -169,6 +188,7 @@ export default function Room() {
             cleanupPlayerScoreUpdated()
             cleanupRoundOver()
             cleanupGameOver()
+            cleanupReplayStarted()
         }
     }, [addChatMessage, setGameStore, upsertPlayer])
 
@@ -213,6 +233,7 @@ export default function Room() {
                     <Canvas
                         color={color}
                         brushSize={brushSize}
+                        clearSignal={canvasClearSignal}
                         isDrawingAllowed={
                             gameStatus == 'Drawing' &&
                             activePlayerId != undefined &&

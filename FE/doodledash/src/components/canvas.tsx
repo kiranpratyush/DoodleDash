@@ -9,6 +9,7 @@ export interface Props {
     brushSize: number
     isDrawingAllowed: boolean
     throttleInMs: number
+    clearSignal: number
 }
 
 export function Canvas(prop: Props) {
@@ -87,6 +88,19 @@ export function Canvas(prop: Props) {
         isDrawingRef.current = false
     }
 
+    function clearCanvas() {
+        const canvas = canvasRef.current
+        const ctx = contextRef.current
+        if (!canvas || !ctx) {
+            return
+        }
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        prevPosRef.current = { x: -1, y: -1 }
+        prevNetWorkPosRef.current = { x: -1, y: -1 }
+        isDrawingRef.current = false
+    }
+
     useEffect(() => {
         const canvas = canvasRef.current
         const container = containerRef.current
@@ -94,10 +108,7 @@ export function Canvas(prop: Props) {
             setupResponsiveCanvas(canvas, container)
             const ctx = canvas.getContext('2d')
             contextRef.current = ctx
-            if (ctx) {
-                ctx.fillStyle = '#FFFFFF'
-                ctx.fillRect(0, 0, canvas.width, canvas.height)
-            }
+            clearCanvas()
         }
         const cleanup = gameHubService.OnDrawData((point) => {
             draw(
@@ -111,6 +122,10 @@ export function Canvas(prop: Props) {
             cleanup()
         }
     }, [])
+
+    useEffect(() => {
+        clearCanvas()
+    }, [prop.clearSignal])
 
     return (
         <div

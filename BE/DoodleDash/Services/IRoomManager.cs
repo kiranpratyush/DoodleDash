@@ -14,5 +14,7 @@ namespace DoodleDash.Services
         Task OnWordChosen(string roomCode, string playerId, string connectionId, string chosenWord);
 
         Task OnGuess(string roomCode, string playerId, string connectionId, string guessText);
+
+        Task ReplayGame(string roomCode, string playerId, string connectionId);
     }
 }
