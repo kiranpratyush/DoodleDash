@@ -17,6 +17,7 @@ namespace DoodleDash.Services
             Player? updatedPlayer = null;
             bool shouldBroadcastChat = false;
             bool shouldBroadcastScore = false;
+            bool shouldEndRound = false;
 
             lock (GetRoomLock(roomCode))
             {
@@ -50,12 +51,13 @@ namespace DoodleDash.Services
                     player.Score += CorrectGuessPoints;
                     updatedPlayer = player;
                     shouldBroadcastScore = true;
+                    shouldEndRound = room.GuessedPlayerIds.Count >= room.Players.Count - 1;
 
                     chatMessage = new ChatMessage
                     {
                         PlayerId = player.Id,
                         PlayerName = player.Name,
-                        Message = $"{player.Name} guessed the word",
+                        Message = $"{player.Name} successfully guessed the word",
                         MessageType = MessageType.System
                     };
                 }
@@ -82,6 +84,11 @@ namespace DoodleDash.Services
             if (shouldBroadcastScore && updatedPlayer != null)
             {
                 await hubContext.Clients.Group(roomCode).SendAsync("PlayerScoreUpdated", updatedPlayer);
+            }
+
+            if (shouldEndRound)
+            {
+                await OnRoundOver(roomCode);
             }
         }
 

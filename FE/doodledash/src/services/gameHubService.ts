@@ -1,6 +1,13 @@
 import * as signalR from '@microsoft/signalr'
-import { type DrawPoint } from '../types'
-import { type RoomSnapshotResponse, type RoundStartedResponse } from '../types'
+import {
+    type ChatMessage,
+    type DrawPoint,
+    type GameOverResponse,
+    type Player,
+    type RoomSnapshotResponse,
+    type RoundOverResponse,
+    type RoundStartedResponse,
+} from '../types'
 
 class GameHubService {
     private connection: signalR.HubConnection
@@ -86,6 +93,10 @@ class GameHubService {
 
     async chooseWord(roomCode: string, chosenWord: string) {
         await this.connection.invoke('ChooseWord', roomCode, chosenWord)
+    }
+
+    async guessWord(roomCode: string, guessText: string) {
+        await this.connection.invoke('GuessWord', roomCode, guessText)
     }
 
     OnDrawData(callback: (point: DrawPoint) => void) {
@@ -184,6 +195,54 @@ class GameHubService {
 
         return () => {
             this.connection.off('RoundStarted', innerCallback)
+        }
+    }
+
+    onReceiveChatMessage(callback: (payload: ChatMessage) => void) {
+        const innerCallback = (payload: ChatMessage) => {
+            callback(payload)
+        }
+
+        this.connection.on('ReceiveChatMessage', innerCallback)
+
+        return () => {
+            this.connection.off('ReceiveChatMessage', innerCallback)
+        }
+    }
+
+    onPlayerScoreUpdated(callback: (payload: Player) => void) {
+        const innerCallback = (payload: Player) => {
+            callback(payload)
+        }
+
+        this.connection.on('PlayerScoreUpdated', innerCallback)
+
+        return () => {
+            this.connection.off('PlayerScoreUpdated', innerCallback)
+        }
+    }
+
+    onRoundOver(callback: (payload: RoundOverResponse) => void) {
+        const innerCallback = (payload: RoundOverResponse) => {
+            callback(payload)
+        }
+
+        this.connection.on('RoundOver', innerCallback)
+
+        return () => {
+            this.connection.off('RoundOver', innerCallback)
+        }
+    }
+
+    onGameOver(callback: (payload: GameOverResponse) => void) {
+        const innerCallback = (payload: GameOverResponse) => {
+            callback(payload)
+        }
+
+        this.connection.on('GameOver', innerCallback)
+
+        return () => {
+            this.connection.off('GameOver', innerCallback)
         }
     }
 }

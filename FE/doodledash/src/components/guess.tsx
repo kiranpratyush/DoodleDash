@@ -1,20 +1,30 @@
 import { useState } from 'react'
 import { PaperAirplaneIcon } from '@heroicons/react/20/solid'
 import { useGameStore } from '../store/gameStore'
+import { gameHubService } from '../services/gameHubService'
 
 export function Guess() {
     const [guess, setGuess] = useState('')
     const chatMessages = useGameStore((state) => state.chatMessages)
+    const roomCode = useGameStore((state) => state.roomCode)
 
-    function handleSend() {
-        if (guess.trim()) {
+    async function handleSend() {
+        const guessText = guess.trim()
+        if (!guessText || !roomCode) {
+            return
+        }
+
+        try {
+            await gameHubService.guessWord(roomCode, guessText)
             setGuess('')
+        } catch (error) {
+            console.error('Failed to send guess', error)
         }
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
         if (e.key === 'Enter') {
-            handleSend()
+            void handleSend()
         }
     }
 
@@ -55,7 +65,7 @@ export function Guess() {
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-emerald-900 text-sm"
                 />
                 <button
-                    onClick={handleSend}
+                    onClick={() => void handleSend()}
                     className="px-4 py-2 bg-emerald-900 text-white rounded-sm hover:bg-emerald-400 transition-colors flex items-center"
                 >
                     <PaperAirplaneIcon className="w-5 h-5" />

@@ -130,14 +130,47 @@ export default function Room() {
                 activePlayerId: payload.activePlayer?.id,
             })
         })
-        /* Add round over|| game over here  || and guess here || score here*/
+        const cleanupReceiveChatMessage = gameHubService.onReceiveChatMessage(
+            (payload) => {
+                addChatMessage(payload)
+            }
+        )
+        const cleanupPlayerScoreUpdated = gameHubService.onPlayerScoreUpdated(
+            (payload) => {
+                upsertPlayer(payload)
+            }
+        )
+        const cleanupRoundOver = gameHubService.onRoundOver((payload) => {
+            setOverlay({ type: 'default', options: defaultOverlayOptions })
+            setGameStore({
+                gameStatus: 'RoundEnded',
+                lastRoundResult: payload,
+                currentWord: undefined,
+                roundEndTime: undefined,
+                activePlayerId: undefined,
+            })
+        })
+        const cleanupGameOver = gameHubService.onGameOver((payload) => {
+            setOverlay({ type: 'default', options: defaultOverlayOptions })
+            setGameStore({
+                gameStatus: 'GameEnded',
+                finalResult: payload,
+                currentWord: undefined,
+                roundEndTime: undefined,
+                activePlayerId: undefined,
+            })
+        })
 
         return () => {
             cleanupStartSelection()
             cleanupGameStarted()
             cleanupRoundStarted()
+            cleanupReceiveChatMessage()
+            cleanupPlayerScoreUpdated()
+            cleanupRoundOver()
+            cleanupGameOver()
         }
-    }, [currentPlayer?.id, setGameStore])
+    }, [addChatMessage, setGameStore, upsertPlayer])
 
     useEffect(() => {
         if (!pendingStartGame || !roomCode) {

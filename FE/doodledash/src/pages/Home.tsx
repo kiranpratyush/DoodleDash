@@ -21,7 +21,6 @@ export default function Home() {
             if (roomCodeFromUrl) {
                 setIsLoading(true)
                 setError(null)
-                debugger
                 const joinResponse = await gameHubService.joinRoom(
                     roomCodeFromUrl,
                     playerName
