@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Timer } from './timer'
+import { Timer } from './Timer'
 import { gameHubService } from '../services/gameHubService'
 import { useGameStore } from '../store/gameStore'
 

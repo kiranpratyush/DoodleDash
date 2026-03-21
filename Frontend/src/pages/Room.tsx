@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Canvas } from '../components/canvas'
-import {
-    ColorPicker,
-} from '../components/colorPicker'
-import { Player } from '../components/player'
-import { Guess } from '../components/guess'
-import { GuessWord } from '../components/guessWord'
-import { Timer } from '../components/timer'
+import { Canvas } from '../components/Canvas'
+import { ColorPicker } from '../components/ColorPicker'
+import { Player } from '../components/Player'
+import { Guess } from '../components/Guess'
+import { GuessWord } from '../components/GuessWord'
 import { useGameStore } from '../store/gameStore'
 import { gameHubService } from '../services/gameHubService'
 import { GameOver } from '../components/GameOver'
 import { RoundOver } from '../components/RoundOver'
 import { WordPicker, WaitingForWordToBeChoosen } from '../components/WordPicker'
+import { Timer } from '../components/Timer'
 
 type OverlayState =
     | { type: 'default';}

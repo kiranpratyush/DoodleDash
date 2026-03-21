@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect,useState } from 'react'
 
 interface Props {
     initialTime?: number
@@ -8,8 +8,6 @@ interface Props {
 }
 
 export function Timer({
-    initialTime = 0,
-    endTimeIso,
     onTimeUp,
     timeCount,
 }: Props) {

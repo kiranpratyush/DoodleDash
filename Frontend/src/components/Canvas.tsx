@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
-import { setupResponsiveCanvas } from './canvasActions'
+import { setupResponsiveCanvas } from './CanvasActions'
 import { type Pos } from '../types'
 import { gameHubService } from '../services/gameHubService'
 import { useGameStore } from '../store/gameStore'
