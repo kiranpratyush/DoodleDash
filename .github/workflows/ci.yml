@@ -1,0 +1,39 @@
+name: DoodleDash CI
+run-name: ${{ github.actor }} running DoodleDash CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./Frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  backend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./Backend/DoodleDash
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v5
+        with: 
+          dotnet-version: 10.0.x
+      - run: dotnet restore 
+      - run: dotnet build --configuration Release --no-restore
+
