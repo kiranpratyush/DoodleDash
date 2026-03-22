@@ -83,10 +83,14 @@ namespace DoodleDash.Services
 
         private static WordHint BuildInitialHint(string word)
         {
+            var RevealedIndices = word
+                .Select((ch, index) => new Hint { Character =ch, Index = index })
+                .Where(x => x.Character == ' ')
+                .ToList();
             return new WordHint
             {
                 Length = word.Length,
-                RevealedIndices = []
+                RevealedIndices = RevealedIndices
             };
         }
         private async Task ScheduleRoundTimeout(string roomCode, string expectedRoundEndTime)
