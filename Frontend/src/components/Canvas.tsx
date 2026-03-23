@@ -22,6 +22,7 @@ export function Canvas(prop: Props) {
     const lastSentRef = useRef(0)
     const roomCode = useGameStore((state) => state.roomCode)
     const playerId = useGameStore((state) => state.currentPlayer?.id)
+    const drawData = useGameStore((state) => state.drawData)
 
     function sendDraw(x: number, y: number) {
         if (playerId) {
@@ -126,6 +127,24 @@ export function Canvas(prop: Props) {
     useEffect(() => {
         clearCanvas()
     }, [prop.clearSignal])
+
+    useEffect(() => {
+        if (drawData && drawData.length > 0) {
+            drawData.forEach((args) => {
+                const colorInt = args[5] ?? 0
+                const colorHex = `#${Math.round(colorInt)
+                    .toString(16)
+                    .padStart(6, '0')}`
+                const brushSize = args[4] ?? 2
+                draw(
+                    { x: args[0], y: args[1] },
+                    { x: args[2], y: args[3] },
+                    colorHex,
+                    brushSize
+                )
+            })
+        }
+    }, [drawData])
 
     return (
         <div
