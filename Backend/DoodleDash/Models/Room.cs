@@ -13,10 +13,10 @@ namespace DoodleDash.Models
     public class Hint
     {
         [JsonPropertyName("index")]
-        public required int Index;
+        public required int Index { get; set; }
 
         [JsonPropertyName("character")]
-        public required char Character;
+        public required char Character { get; set; }
     }
 
 
