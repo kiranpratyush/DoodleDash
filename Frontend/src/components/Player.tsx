@@ -2,9 +2,14 @@ import { useGameStore } from '../store/gameStore'
 
 export function Player() {
     const players = useGameStore((state) => state.players)
+    const currentRound = useGameStore((state) => state.currentRound)
+    const totalRounds = useGameStore((state) => state.totalRounds)
 
     return (
         <div className="h-full bg-gray-100 rounded-sm p-4 overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 border-b border-gray-200 pb-2">
+                Round {currentRound} of {totalRounds}
+            </h3>
             <h2 className="text-lg font-semibold text-gray-700 mb-4">
                 Players
             </h2>

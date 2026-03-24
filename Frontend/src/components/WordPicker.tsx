@@ -1,7 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Timer } from './Timer'
 import { gameHubService } from '../services/gameHubService'
 import { useGameStore } from '../store/gameStore'
+
+export function RoundSplash({ roundNumber }: { roundNumber: number }) {
+    return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-50 rounded-sm backdrop-blur-sm">
+            <h2 className="text-6xl font-black text-gray-800 animate-pulse drop-shadow-md">
+                Round {roundNumber}
+            </h2>
+        </div>
+    )
+}
 
 interface Prop {
     time: number
@@ -14,7 +24,14 @@ interface Prop2 {
 
 export function WordPicker({ time, wordOptions }: Prop) {
     const room = useGameStore((state) => state.roomCode)
+    const currentRound = useGameStore((state) => state.currentRound)
     const [selectedWord, setSelectedWord] = useState<string | null>(null)
+    const [showSplash, setShowSplash] = useState(true)
+
+    useEffect(() => {
+        const timer = setTimeout(() => setShowSplash(false), 2000)
+        return () => clearTimeout(timer)
+    }, [])
 
     async function onSelectWord(word: string) {
         if (selectedWord) {
@@ -23,6 +40,10 @@ export function WordPicker({ time, wordOptions }: Prop) {
 
         setSelectedWord(word)
         await gameHubService.chooseWord(room, word)
+    }
+
+    if (showSplash) {
+        return <RoundSplash roundNumber={currentRound} />
     }
 
     return (
@@ -56,22 +77,20 @@ export function WordPicker({ time, wordOptions }: Prop) {
                                 type="button"
                                 disabled={selectedWord !== null}
                                 onClick={async () => await onSelectWord(word)}
-                                className={`group w-full rounded-2xl border px-5 py-4 text-left transition duration-200 ${
-                                    isSelected
-                                        ? 'border-cyan-700 bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
-                                        : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-cyan-400 hover:bg-cyan-50 hover:shadow-md'
-                                } ${selectedWord && !isSelected ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                className={`group w-full rounded-2xl border px-5 py-4 text-left transition duration-200 ${isSelected
+                                    ? 'border-cyan-700 bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                                    : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-cyan-400 hover:bg-cyan-50 hover:shadow-md'
+                                    } ${selectedWord && !isSelected ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                             >
                                 <span className="flex items-center justify-between gap-4">
                                     <span className="text-lg font-semibold capitalize tracking-wide">
                                         {word}
                                     </span>
                                     <span
-                                        className={`text-xs font-bold uppercase tracking-[0.3em] ${
-                                            isSelected
-                                                ? 'text-cyan-50'
-                                                : 'text-slate-400 transition group-hover:text-cyan-600'
-                                        }`}
+                                        className={`text-xs font-bold uppercase tracking-[0.3em] ${isSelected
+                                            ? 'text-cyan-50'
+                                            : 'text-slate-400 transition group-hover:text-cyan-600'
+                                            }`}
                                     ></span>
                                 </span>
                             </button>
@@ -84,6 +103,18 @@ export function WordPicker({ time, wordOptions }: Prop) {
 }
 
 export function WaitingForWordToBeChoosen({ time, playerName }: Prop2) {
+    const currentRound = useGameStore((state) => state.currentRound)
+    const [showSplash, setShowSplash] = useState(true)
+
+    useEffect(() => {
+        const timer = setTimeout(() => setShowSplash(false), 2000)
+        return () => clearTimeout(timer)
+    }, [])
+
+    if (showSplash) {
+        return <RoundSplash roundNumber={currentRound} />
+    }
+
     return (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/30 backdrop-blur-[2px] px-4">
             <div className="w-full max-w-md rounded-3xl border border-white/50 bg-white/90 p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.22)]">

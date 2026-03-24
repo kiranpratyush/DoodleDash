@@ -93,23 +93,25 @@ export default function Room() {
 
     useEffect(() => {
         const cleanupStartSelection = gameHubService.onStartWordSelection(
-            (options, selectionTime: number) => {
+            (options, selectionTime: number, currentRound: number) => {
                 setCanvasClearSignal((value) => value + 1)
                 setGameStore({
                     gameStatus: 'SelectingWord',
                     pendingStartGame: false,
+                    currentRound: currentRound,
                     drawData: [],
                 })
                 setOverlay({ type: 'select', options, time: selectionTime })
             }
         )
         const cleanupGameStarted = gameHubService.onGameStarted(
-            (activePlayerId, activePlayerName, drawTimeInSecond: number) => {
+            (activePlayerId, activePlayerName, drawTimeInSecond: number, currentRound: number) => {
                 setCanvasClearSignal((value) => value + 1)
                 setGameStore({
                     gameStatus: 'SelectingWord',
                     activePlayerId: activePlayerId,
                     pendingStartGame: false,
+                    currentRound: currentRound,
                     drawData: [],
                 })
                 setOverlay({
