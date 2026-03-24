@@ -7,6 +7,7 @@ import {
     type RoomSnapshotResponse,
     type RoundOverResponse,
     type RoundStartedResponse,
+    type WordHint,
 } from '../types'
 
 class GameHubService {
@@ -259,6 +260,18 @@ class GameHubService {
 
         return () => {
             this.connection.off('ReplayStarted', innerCallback)
+        }
+    }
+
+    onHintUpdated(callback: (payload: WordHint) => void) {
+        const innerCallback = (payload: WordHint) => {
+            callback(payload)
+        }
+
+        this.connection.on('HintUpdated', innerCallback)
+
+        return () => {
+            this.connection.off('HintUpdated', innerCallback)
         }
     }
 }

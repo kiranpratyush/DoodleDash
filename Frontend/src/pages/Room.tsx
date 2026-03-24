@@ -177,6 +177,9 @@ export default function Room() {
                 activePlayerId: undefined,
             })
         })
+        const cleanupHintUpdated = gameHubService.onHintUpdated((payload) => {
+            setGameStore({ currentWordHint: payload })
+        })
 
         return () => {
             cleanupStartSelection()
@@ -187,6 +190,7 @@ export default function Room() {
             cleanupRoundOver()
             cleanupGameOver()
             cleanupReplayStarted()
+            cleanupHintUpdated()
         }
     }, [addChatMessage, setGameStore, upsertPlayer])
 

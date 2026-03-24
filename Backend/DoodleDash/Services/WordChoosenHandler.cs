@@ -77,6 +77,7 @@ namespace DoodleDash.Services
                 if (expectedRoundEndTime != null)
                 {
                     _ = ScheduleRoundTimeout(roomCode, expectedRoundEndTime);
+                    _ = ScheduleHintReveal(roomCode, expectedRoundEndTime);
                 }
             }
         }
@@ -116,6 +117,64 @@ namespace DoodleDash.Services
             }
 
             await OnRoundOver(roomCode);
+        }
+
+        private async Task ScheduleHintReveal(string roomCode, string expectedRoundEndTime)
+        {
+            if (!DateTime.TryParse(expectedRoundEndTime, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var endTime))
+            {
+                return;
+            }
+
+            while (DateTime.UtcNow < endTime)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(GameConstants.HintIntervalSeconds));
+
+                WordHint? updatedHint = null;
+
+                lock (GetRoomLock(roomCode))
+                {
+                    if (!Rooms.TryGetValue(roomCode, out var room) || room.IsExpired)
+                        return;
+
+                    if (room.Status != GameStatus.Drawing || room.RoundEndTime != expectedRoundEndTime)
+                        return;
+
+                    if (room.CurrentWord != null && room.CurrentWordHint != null)
+                    {
+                        var revealedCount = room.CurrentWordHint.RevealedIndices.Count(h => h.Character != ' ');
+                        if (revealedCount >= GameConstants.MaxHintsPerRound)
+                        {
+                            return; // Stop timer if we've reached the max hints
+                        }
+
+                        var revealedIndices = room.CurrentWordHint.RevealedIndices.Select(h => h.Index);
+                        var hiddenIndices = Enumerable.Range(0, room.CurrentWord.Length)
+                            .Where(i => room.CurrentWord[i] != ' ')
+                            .Except(revealedIndices)
+                            .ToList();
+
+                        if (hiddenIndices.Count > 1) 
+                        {
+                            int randPos = new Random().Next(hiddenIndices.Count);
+                            int randomIndex = hiddenIndices[randPos];
+                            
+                            var newHint = new Hint { Character = room.CurrentWord[randomIndex], Index = randomIndex };
+                            room.CurrentWordHint.RevealedIndices.Add(newHint);
+                            updatedHint = room.CurrentWordHint;
+                        }
+                        else
+                        {
+                            return; 
+                        }
+                    }
+                }
+
+                if (updatedHint != null)
+                {
+                    await hubContext.Clients.Group(roomCode).SendAsync("HintUpdated", updatedHint);
+                }
+            }
         }
     }
 }

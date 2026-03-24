@@ -8,6 +8,12 @@ namespace DoodleDash.Models
     public enum GameStatus { Lobby, SelectingWord, Drawing, RoundEnded, GameEnded }
 
     public enum MessageType { User, System }
+    
+    public static class GameConstants 
+    {
+        public const int HintIntervalSeconds = 5;
+        public const int MaxHintsPerRound = 2;
+    }
 
 
     public class Hint
