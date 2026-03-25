@@ -15,7 +15,7 @@ export interface Props {
 export function Canvas(prop: Props) {
     const containerRef = useRef<null | HTMLDivElement>(null)
     const canvasRef = useRef<null | HTMLCanvasElement>(null)
-    const contextRef = useRef<CanvasRenderingContext2D | null>(null)
+    const contextRef = useRef<CanvasRenderingContext2D | undefined>(undefined)
     const prevPosRef = useRef<Pos>({ x: -1, y: -1 })
     const prevNetWorkPosRef = useRef<Pos>({ x: -1, y: -1 })
     const isDrawingRef = useRef<boolean>(false)
@@ -101,16 +101,29 @@ export function Canvas(prop: Props) {
         prevNetWorkPosRef.current = { x: -1, y: -1 }
         isDrawingRef.current = false
     }
-
     useEffect(() => {
-        const canvas = canvasRef.current
-        const container = containerRef.current
-        if (canvas && container && canvas.getContext) {
-            setupResponsiveCanvas(canvas, container)
-            const ctx = canvas.getContext('2d')
-            contextRef.current = ctx
-            clearCanvas()
-        }
+        const containerElement = containerRef.current
+        const canvasElement = canvasRef.current
+        if (!containerElement || !canvasElement) return
+        const render =  canvasRef.current?.getContext("2d")
+        if(render) contextRef.current = render
+        const { width: containerWidth, height: containerHeight } =
+            containerElement.getBoundingClientRect()
+        setupResponsiveCanvas(canvasElement, containerWidth, containerHeight)
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setupResponsiveCanvas(
+                    canvasElement,
+                    entry.contentRect.width,
+                    entry.contentRect.height
+                )
+            }
+        })
+
+        observer.observe(containerElement)
+        return () => observer.disconnect()
+    }, [])
+    useEffect(() => {
         const cleanup = gameHubService.OnDrawData((point) => {
             draw(
                 { x: point.x0, y: point.y0 },

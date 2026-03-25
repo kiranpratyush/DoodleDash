@@ -46,6 +46,13 @@ export type GameStatus =
     | 'RoundEnded'
     | 'GameEnded'
 
+export type RoomOverlay =
+    | { type: 'default' }
+    | { type: 'select'; options: string[]; time: number }
+    | { type: 'waiting'; activePlayerName: string; time: number }
+    | { type: 'roundover' }
+    | { type: 'gameover' }
+
 export type MessageType = 'User' | 'System'
 
 export interface Response {
@@ -144,4 +151,6 @@ export interface GameStore {
     lastRoundResult?: RoundOverResponse
     finalResult?: GameOverResponse
     activePlayerId?: string
+    overlay: RoomOverlay
+    canvasClearSignal: number
 }

@@ -3,6 +3,7 @@ import {
     type ChatMessage,
     type GameSnapShotResponse,
     type GameStore,
+    type RoomOverlay,
     type RoomSnapshotResponse,
 } from '../types'
 
@@ -13,6 +14,9 @@ interface GameStoreWithActions extends GameStore {
     removePlayer: (playerId: string) => void
     resetGame: () => void
     setGameStore: (storeUpdates: Partial<GameStore>) => void
+    setOverlay: (overlay: RoomOverlay) => void
+    resetOverlay: () => void
+    incrementCanvasClearSignal: () => void
 }
 
 const defaultGameStore: GameStore = {
@@ -27,6 +31,8 @@ const defaultGameStore: GameStore = {
     wordSelectionSeconds: 0,
     drawData: [],
     currentWordOptions: [],
+    overlay: { type: 'default' },
+    canvasClearSignal: 0,
 }
 
 const mapGameSnapshotToState = (
@@ -76,6 +82,15 @@ export const useGameStore = create<GameStoreWithActions>((set) => ({
         set((state) => {
             return { ...state, ...storeUpdate }
         })
+    },
+    setOverlay: (overlay: RoomOverlay) => {
+        set(() => ({ overlay }))
+    },
+    resetOverlay: () => {
+        set(() => ({ overlay: { type: 'default' } }))
+    },
+    incrementCanvasClearSignal: () => {
+        set((state) => ({ canvasClearSignal: state.canvasClearSignal + 1 }))
     },
     addChatMessage: (message: ChatMessage) =>
         set((state) => ({
