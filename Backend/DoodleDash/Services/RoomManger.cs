@@ -160,8 +160,8 @@ namespace DoodleDash.Services
 
             if (room != null && room.ActivePlayer != null)
             {
-                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds);
-                await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId).SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name, room.DrawTimeSeconds);
+                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds, room.CurrentRound);
+                await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId).SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name, room.DrawTimeSeconds, room.CurrentRound);
             }
             if (selectionEndTime != null)
             {
@@ -317,8 +317,8 @@ namespace DoodleDash.Services
             }
             if (shouldStartNextRound && activePlayerConnectionId != null)
             {
-                await hubContext.Clients.Client(activePlayerConnectionId).SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds);
-                await hubContext.Clients.GroupExcept(roomCode, activePlayerConnectionId).SendAsync("GameStarted", activePlayerId, activePlayerName, room.DrawTimeSeconds);
+                await hubContext.Clients.Client(activePlayerConnectionId).SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds, room.CurrentRound);
+                await hubContext.Clients.GroupExcept(roomCode, activePlayerConnectionId).SendAsync("GameStarted", activePlayerId, activePlayerName, room.DrawTimeSeconds, room.CurrentRound);
                 if (room != null)
                 {
                     _ = ScheduleSelectionTimeout(roomCode, DateTime.Now.AddSeconds(5000).ToUniversalTime().ToString());

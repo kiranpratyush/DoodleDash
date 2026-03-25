@@ -7,6 +7,7 @@ import {
     type RoomSnapshotResponse,
     type RoundOverResponse,
     type RoundStartedResponse,
+    type WordHint,
 } from '../types'
 
 class GameHubService {
@@ -155,10 +156,10 @@ class GameHubService {
     }
 
     onStartWordSelection(
-        callback: (options: string[], selectionTime: number) => void
+        callback: (options: string[], selectionTime: number, currentRound: number) => void
     ) {
-        const innerCallback = (options: string[], selectionTime: number) => {
-            callback(options, selectionTime)
+        const innerCallback = (options: string[], selectionTime: number, currentRound: number) => {
+            callback(options, selectionTime, currentRound)
         }
 
         this.connection.on('StartWordSelection', innerCallback)
@@ -172,15 +173,17 @@ class GameHubService {
         callback: (
             activePlayerId: string,
             activePlayerName: string,
-            drawTimeSeconds: number
+            drawTimeSeconds: number,
+            currentRound: number,
         ) => void
     ) {
         const innerCallback = (
             activePlayerId: string,
             activePlayerName: string,
-            drawTimeSeconds: number
+            drawTimeSeconds: number,
+            currentRound: number,
         ) => {
-            callback(activePlayerId, activePlayerName, drawTimeSeconds)
+            callback(activePlayerId, activePlayerName, drawTimeSeconds, currentRound)
         }
 
         this.connection.on('GameStarted', innerCallback)
@@ -259,6 +262,18 @@ class GameHubService {
 
         return () => {
             this.connection.off('ReplayStarted', innerCallback)
+        }
+    }
+
+    onHintUpdated(callback: (payload: WordHint) => void) {
+        const innerCallback = (payload: WordHint) => {
+            callback(payload)
+        }
+
+        this.connection.on('HintUpdated', innerCallback)
+
+        return () => {
+            this.connection.off('HintUpdated', innerCallback)
         }
     }
 }

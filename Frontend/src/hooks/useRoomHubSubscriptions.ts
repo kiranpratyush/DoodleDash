@@ -43,11 +43,12 @@ export function useRoomHubSubscriptions() {
         })
 
         const cleanupStartSelection = gameHubService.onStartWordSelection(
-            (options, selectionTime: number) => {
+            (options, selectionTime: number, currentRound: number) => {
                 incrementCanvasClearSignal()
                 setGameStore({
                     gameStatus: 'SelectingWord',
                     pendingStartGame: false,
+                    currentRound: currentRound,
                     drawData: [],
                 })
                 setOverlay({ type: 'select', options, time: selectionTime })
@@ -55,12 +56,13 @@ export function useRoomHubSubscriptions() {
         )
 
         const cleanupGameStarted = gameHubService.onGameStarted(
-            (activePlayerId, activePlayerName, drawTimeInSecond: number) => {
+            (activePlayerId, activePlayerName, drawTimeInSecond: number, currentRound: number) => {
                 incrementCanvasClearSignal()
                 setGameStore({
                     gameStatus: 'SelectingWord',
                     activePlayerId: activePlayerId,
                     pendingStartGame: false,
+                    currentRound: currentRound,
                     drawData: [],
                 })
                 setOverlay({
@@ -135,6 +137,10 @@ export function useRoomHubSubscriptions() {
             })
         })
 
+        const cleanupHintUpdated = gameHubService.onHintUpdated((payload) => {
+            setGameStore({ currentWordHint: payload })
+        })
+
         return () => {
             cleanupJoined()
             cleanupLeft()
@@ -146,6 +152,7 @@ export function useRoomHubSubscriptions() {
             cleanupRoundOver()
             cleanupGameOver()
             cleanupReplayStarted()
+            cleanupHintUpdated()
         }
     }, [
         addChatMessage,
