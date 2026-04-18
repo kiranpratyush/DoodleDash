@@ -19,7 +19,10 @@ namespace DoodleDash.Hubs
             if (response.Success)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
-                await Clients.GroupExcept(roomCode, Context.ConnectionId).SendAsync("PlayerJoined", response.Player);
+                if (!response.IsReconnect)
+                {
+                    await Clients.GroupExcept(roomCode, Context.ConnectionId).SendAsync("PlayerJoined", response.Player);
+                }
             }
             Context.Items["PlayerId"] = response.Player?.Id;
             Context.Items["RoomCode"] = roomCode;

@@ -7,32 +7,34 @@ namespace DoodleDash.Services
     {
         public async Task OnDrawData(string roomCode, string playerId, string connectionId, List<float> drawData)
         {
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? _))
-            {
-                return;
-            }
             string activeConnectionId = "";
             bool shouldSend = false;
-            lock(GetRoomLock(roomCode)){
-                if(Rooms.TryGetValue(roomCode, out GameRoom? room))
+
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
+            {
+                if (roomLock == null)
+                    return;
+
+                var room = roomStateStore.GetRoom(roomCode);
+                if (room == null)
+                    return;
+
+                if (room.Status == GameStatus.Drawing &&
+                    room.ActivePlayer?.Id == playerId &&
+                    room.ActivePlayer?.ConnectionId == connectionId &&
+                    drawData.Count == 6)
                 {
-                    if(room.Status == GameStatus.Drawing &&
-                        room.ActivePlayer?.Id == playerId &&
-                        room.ActivePlayer?.ConnectionId == connectionId &&
-                        drawData.Count == 6)
-                    {
-                        var history = CanvasHistory.GetOrAdd(roomCode, _ => new List<List<float>>());
-                        history.Add(drawData);
-                        activeConnectionId = room.ActivePlayer.ConnectionId;
-                        shouldSend = true;
-                    }
+                    room.DrawData.Add(drawData);
+                    roomStateStore.SaveRoom(room);
+                    activeConnectionId = room.ActivePlayer.ConnectionId;
+                    shouldSend = true;
                 }
             }
-            if(shouldSend)
-            {
-                await hubContext.Clients.GroupExcept(roomCode,[activeConnectionId]).SendAsync("OnDrawData",drawData);
-            }
 
+            if (shouldSend)
+            {
+                await hubContext.Clients.GroupExcept(roomCode, [activeConnectionId]).SendAsync("OnDrawData", drawData);
+            }
         }
     }
 }

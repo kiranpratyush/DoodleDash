@@ -19,7 +19,7 @@ namespace DoodleDash.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Description = "Game Room details")]
         public ActionResult<GameRoom> GetRoom(string roomCode)
         {
-            GameRoom? gameRoom = null;
+            GameRoom? gameRoom = roomMangager.GetRoom(roomCode);
             if (gameRoom == null) return Ok(null);
             return Ok(new GameRoom
             {

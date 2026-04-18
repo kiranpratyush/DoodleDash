@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging.Abstractions;
-using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -95,7 +93,7 @@ namespace DoodleDash.Models
 
         public List<string> CustomWords { get; set; } = [];
 
-        public ConcurrentDictionary<string, Player> Players { get; set; } = new();
+        public Dictionary<string, Player> Players { get; set; } = [];
 
         public Player? ActivePlayer { get; set; }
 
@@ -118,6 +116,8 @@ namespace DoodleDash.Models
         public HashSet<string> GuessedPlayerIds { get; set; } = [];
 
         public List<ChatMessage> ChatMessages { get; set; } = [];
+
+        public List<List<float>> DrawData { get; set; } = [];
 
         public WordHint? CurrentWordHint { get; set; }
 
@@ -238,6 +238,9 @@ namespace DoodleDash.Models
         public Player? Player { get; set; }
         [JsonPropertyName("snapShotResponse")]
         public GameSnapShotResponse? SnapShotResponse { get; set; }
+
+        [JsonIgnore]
+        public bool IsReconnect { get; set; }
 
     }
 
