@@ -1,4 +1,4 @@
-import { useEffect,useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface Props {
     initialTime?: number
@@ -7,32 +7,43 @@ interface Props {
     timeCount: number
 }
 
-export function Timer({
-    onTimeUp,
-    timeCount,
-}: Props) {
+export function Timer({ onTimeUp, timeCount }: Props) {
     const [time, setTime] = useState(timeCount)
+
+    useEffect(() => {
+        setTime(timeCount)
+    }, [timeCount])
 
     useEffect(() => {
         if (time <= 0) {
             onTimeUp?.()
             return
         }
-
-        const interval = setInterval(() => {
-            setTime((prev) => prev - 1)
-        }, 1000)
-
+        const interval = setInterval(() => setTime((prev) => prev - 1), 1000)
         return () => clearInterval(interval)
     }, [time, onTimeUp])
 
+    const urgent = time <= 10
+    const critical = time <= 5
+
     return (
-        <div className="w-8 h-8 border-2 border-solid rounded-[50%] flex justify-center items-center align-middle mr-4">
-            <span
-                className={`text-sm font-bold ${time > 10 ? 'text-gray-800' : 'text-red-500'}`}
-            >
-                {time}
-            </span>
+        <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '7px 14px',
+            background: critical ? 'var(--crayon-coral)' : urgent ? 'var(--crayon-sun)' : '#fff',
+            color: critical ? '#fff' : 'var(--ink)',
+            border: '2.5px solid var(--ink)',
+            borderRadius: 'var(--r-pill)',
+            boxShadow: 'var(--sticker-sm)',
+            fontFamily: 'var(--font-hand)',
+            fontSize: 24,
+            minWidth: 80,
+            justifyContent: 'center',
+            animation: critical ? 'dd-shake 0.4s infinite' : 'none',
+            transition: 'background 300ms, color 300ms',
+        }}>
+            <span>⏱</span>
+            <span>{time}s</span>
         </div>
     )
 }

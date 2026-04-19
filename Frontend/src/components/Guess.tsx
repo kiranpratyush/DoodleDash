@@ -1,76 +1,93 @@
-import { useState } from 'react'
-import { PaperAirplaneIcon } from '@heroicons/react/20/solid'
+import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { gameHubService } from '../services/gameHubService'
+import type { ChatMessage } from '../types'
+
+function ChatBubble({ m }: { m: ChatMessage }) {
+    if (m.messageType === 'System') {
+        const isCorrect = m.message.toLowerCase().includes('guessed') || m.message.toLowerCase().includes('correct')
+        if (isCorrect) {
+            return (
+                <div className="pop-in" style={{
+                    background: 'var(--crayon-leaf)', color: '#fff',
+                    border: '2.5px solid var(--ink)', borderRadius: 14,
+                    padding: '8px 12px', fontWeight: 800, boxShadow: 'var(--sticker-sm)',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                    <span style={{ fontSize: 16 }}>🎉</span>
+                    <span>{m.message}</span>
+                </div>
+            )
+        }
+        return (
+            <div style={{ fontSize: 12, color: 'var(--ink-faint)', fontStyle: 'italic', textAlign: 'center', padding: '2px 0' }}>
+                {m.message}
+            </div>
+        )
+    }
+    return (
+        <div style={{ fontSize: 14, padding: '3px 0' }}>
+            <b style={{ color: 'var(--ink)' }}>{m.playerName}:</b>{' '}
+            <span style={{ color: 'var(--ink-soft)' }}>{m.message}</span>
+        </div>
+    )
+}
 
 export function Guess() {
     const [guess, setGuess] = useState('')
-    const chatMessages = useGameStore((state) => state.chatMessages)
-    const roomCode = useGameStore((state) => state.roomCode)
+    const chatMessages = useGameStore((s) => s.chatMessages)
+    const roomCode = useGameStore((s) => s.roomCode)
+    const activePlayerId = useGameStore((s) => s.activePlayerId)
+    const currentPlayer = useGameStore((s) => s.currentPlayer)
+    const listRef = useRef<HTMLDivElement>(null)
+
+    const isDrawer = !!activePlayerId && currentPlayer?.id === activePlayerId
+
+    useEffect(() => {
+        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+    }, [chatMessages.length])
 
     async function handleSend() {
-        const guessText = guess.trim()
-        if (!guessText || !roomCode) {
-            return
-        }
-
+        const text = guess.trim()
+        if (!text || !roomCode || isDrawer) return
         try {
-            await gameHubService.guessWord(roomCode, guessText)
+            await gameHubService.guessWord(roomCode, text)
             setGuess('')
-        } catch (error) {
-            console.error('Failed to send guess', error)
+        } catch (err) {
+            console.error('Failed to send guess', err)
         }
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        if (e.key === 'Enter') {
-            void handleSend()
-        }
+        if (e.key === 'Enter') void handleSend()
     }
 
     return (
-        <div className="h-full bg-gray-100 rounded-sm p-4 flex flex-col">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                Send your guesses
-            </h2>
-            <div className="flex-1 overflow-y-auto space-y-2">
-                {chatMessages.map((message, index) => {
-                    const isSystem = message.messageType === 'System'
-                    return (
-                        <div
-                            key={`${message.playerId}-${index}`}
-                            className={`p-2 rounded-sm text-sm ${isSystem ? 'bg-emerald-50 text-emerald-800 italic text-center' : 'bg-white text-gray-600'}`}
-                        >
-                            {isSystem ? (
-                                message.message
-                            ) : (
-                                <>
-                                    <span className="font-medium text-gray-800">
-                                        {message.playerName}:
-                                    </span>{' '}
-                                    {message.message}
-                                </>
-                            )}
-                        </div>
-                    )
-                })}
+        <div className="dd-card" style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ fontFamily: 'var(--font-hand)', fontSize: 24 }}>Guess chat</div>
+                <span className="dd-chip">💬 {chatMessages.length}</span>
             </div>
-            <div className="mt-4 flex gap-2">
+            <hr className="dd-rule" style={{ margin: '6px 0 10px' }} />
+            <div ref={listRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5, paddingRight: 2 }}>
+                {chatMessages.map((m, i) => <ChatBubble key={`${m.playerId}-${i}`} m={m} />)}
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); void handleSend() }} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <input
-                    type="text"
+                    className="dd-input"
                     value={guess}
                     onChange={(e) => setGuess(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type your guess..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-emerald-900 text-sm"
+                    placeholder={isDrawer ? "You're drawing — no guessing!" : 'Type your guess…'}
+                    disabled={isDrawer}
+                    style={{ fontSize: 14, padding: '10px 12px' }}
                 />
-                <button
-                    onClick={() => void handleSend()}
-                    className="px-4 py-2 bg-emerald-900 text-white rounded-sm hover:bg-emerald-400 transition-colors flex items-center"
-                >
-                    <PaperAirplaneIcon className="w-5 h-5" />
+                <button type="submit" className="dd-btn dd-btn--primary"
+                    disabled={isDrawer || !guess.trim()}
+                    style={{ padding: '10px 14px', flexShrink: 0 }}>
+                    Send
                 </button>
-            </div>
+            </form>
         </div>
     )
 }

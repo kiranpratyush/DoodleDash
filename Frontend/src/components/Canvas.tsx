@@ -162,7 +162,15 @@ export function Canvas(prop: Props) {
     return (
         <div
             ref={containerRef}
-            className="h-full rounded-sm shadow-inner bg-white overflow-hidden"
+            style={{
+                height: '100%', width: '100%',
+                background: '#fff',
+                border: '3px solid var(--ink)',
+                borderRadius: 'var(--r-lg)',
+                boxShadow: 'var(--sticker-lg)',
+                overflow: 'hidden',
+                cursor: prop.isDrawingAllowed ? 'crosshair' : 'default',
+            }}
         >
             <canvas
                 ref={canvasRef}
@@ -170,7 +178,7 @@ export function Canvas(prop: Props) {
                 onMouseMove={onMouseMove}
                 onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
-                className="bg-white overflow-hidden"
+                style={{ display: 'block', background: '#fff' }}
             >
                 Drawing Content Browser does not supported
             </canvas>

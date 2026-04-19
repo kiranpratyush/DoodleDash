@@ -2,124 +2,160 @@ import { useMemo, useState } from 'react'
 import { gameHubService } from '../services/gameHubService'
 import { useGameStore } from '../store/gameStore'
 import { useLocalInputs } from '../store/inputStore'
+import { PlayerAvatar } from './doodle'
+import { SketchUnderline } from '../design-system/dd'
+
+function Confetti() {
+    const items = useMemo(() => Array.from({ length: 40 }).map((_, i) => ({
+        left: Math.random() * 100,
+        delay: Math.random() * 1.5,
+        dur: 2.4 + Math.random() * 2,
+        color: ['#EF6C4A','#F5B841','#6DAA5A','#4A9DD9','#9A6FB0','#D94A77'][i % 6],
+        rot: Math.random() * 360,
+        w: 6 + Math.random() * 8,
+        h: 10 + Math.random() * 12,
+    })), [])
+    return (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 5 }}>
+            {items.map((it, i) => (
+                <div key={i} style={{
+                    position: 'absolute', top: -20, left: it.left + '%',
+                    width: it.w, height: it.h,
+                    background: it.color, border: '1.5px solid #2B2A27',
+                    transform: `rotate(${it.rot}deg)`,
+                    animation: `confetti-fall ${it.dur}s linear ${it.delay}s infinite`,
+                }} />
+            ))}
+        </div>
+    )
+}
 
 export function GameOver() {
-    const finalResult = useGameStore((state) => state.finalResult)
-    const roomCode = useGameStore((state) => state.roomCode)
-    const currentPlayer = useGameStore((state) => state.currentPlayer)
-    const hostId = useGameStore((state) => state.hostId)
-    const setCurrentScreen = useLocalInputs((state) => state.setCurrentScreen)
+    const finalResult = useGameStore((s) => s.finalResult)
+    const roomCode = useGameStore((s) => s.roomCode)
+    const currentPlayer = useGameStore((s) => s.currentPlayer)
+    const hostId = useGameStore((s) => s.hostId)
+    const setCurrentScreen = useLocalInputs((s) => s.setCurrentScreen)
     const [isReplaying, setIsReplaying] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const sortedScores = useMemo(() => {
-        if (!finalResult?.finalScores) {
-            return []
-        }
-        return [...finalResult.finalScores].sort(
-            (a, b) => (b.score ?? 0) - (a.score ?? 0)
-        )
+        if (!finalResult?.finalScores) return []
+        return [...finalResult.finalScores].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     }, [finalResult?.finalScores])
 
-    if (!finalResult) {
-        return null
-    }
+    if (!finalResult) return null
 
-    const winner = finalResult.winner ?? sortedScores[0]
     const isHost = !!currentPlayer?.id && currentPlayer.id === hostId
+    const [winner, second, third] = sortedScores
 
     async function onPlayAgain() {
-        if (!isHost || !roomCode || isReplaying) {
-            return
-        }
-
+        if (!isHost || !roomCode || isReplaying) return
         setError(null)
         setIsReplaying(true)
         try {
             await gameHubService.replayGame(roomCode)
-        } catch (err) {
-            console.error('Replay failed', err)
+        } catch {
             setError('Could not start replay. Please try again.')
         } finally {
             setIsReplaying(false)
         }
     }
 
-    return (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45 backdrop-blur-[2px] px-4">
-            <div className="w-full max-w-2xl rounded-3xl border border-white/40 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-rose-700">
-                    Session Complete
-                </p>
-                <h2 className="mt-2 text-3xl font-black text-slate-900">
-                    Game Over
-                </h2>
+    const PODIUM_ORDER = [second, winner, third]
+    const RANKS = [2, 1, 3]
+    const HEIGHTS: Record<number, number> = { 1: 160, 2: 110, 3: 80 }
+    const COLORS: Record<number, string> = { 1: 'var(--crayon-sun)', 2: 'var(--crayon-sky)', 3: 'var(--crayon-grape)' }
+    const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
-                {winner && (
-                    <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-slate-900">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-amber-700">
-                            Winner
-                        </p>
-                        <p className="mt-1 text-2xl font-black">
-                            {winner.name}
-                            <span className="ml-2 text-lg font-semibold text-amber-700">
-                                {winner.score ?? 0} pts
-                            </span>
-                        </p>
+    return (
+        <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(43,42,39,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10, padding: 24, overflow: 'hidden',
+        }}>
+            <Confetti />
+            <div style={{ position: 'relative', zIndex: 6, maxWidth: 680, width: '100%' }}>
+                {/* Winner header */}
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.6, color: '#fff', textTransform: 'uppercase', textShadow: '0 1px 0 rgba(0,0,0,0.4)' }}>Game over</div>
+                    <h1 className="dd-title pop-in" style={{ fontSize: 60, color: '#fff', textShadow: '2px 2px 0 var(--ink)' }}>
+                        {winner?.name} <span style={{ color: 'var(--crayon-sun)' }}>wins!</span>
+                    </h1>
+                    <SketchUnderline color="var(--crayon-sun)" width={280} style={{ margin: '4px auto 0' }} />
+                </div>
+
+                {/* Podium */}
+                {sortedScores.length >= 2 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: 16, alignItems: 'end', marginBottom: 20 }}>
+                        {PODIUM_ORDER.map((p, i) => {
+                            if (!p) return <div key={i} />
+                            const rank = RANKS[i]
+                            return (
+                                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <div className={rank === 1 ? 'wobble' : ''} style={{ marginBottom: 8 }}>
+                                        <PlayerAvatar seed={p.name} size={rank === 1 ? 88 : 64} />
+                                    </div>
+                                    <div style={{ fontFamily: 'var(--font-hand)', fontSize: rank === 1 ? 28 : 20, color: '#fff', textShadow: '1px 1px 0 var(--ink)' }}>{p.name}</div>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.8)' }}>{p.score ?? 0} pts</div>
+                                    <div className="pop-in" style={{
+                                        marginTop: 10, width: '100%', height: HEIGHTS[rank],
+                                        background: COLORS[rank], border: '2.5px solid var(--ink)',
+                                        borderRadius: 14, boxShadow: 'var(--sticker)',
+                                        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                                        paddingTop: 12, fontSize: rank === 1 ? 48 : 36,
+                                        animationDelay: `${i * 120}ms`,
+                                    }}>
+                                        {MEDALS[rank]}
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
 
-                <div className="mt-5 rounded-2xl border border-slate-200 bg-white">
-                    <div className="grid grid-cols-12 border-b border-slate-200 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                        <span className="col-span-2">Rank</span>
-                        <span className="col-span-7">Player</span>
-                        <span className="col-span-3 text-right">Score</span>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                        {sortedScores.map((player, index) => (
-                            <div
-                                key={player.id}
-                                className="grid grid-cols-12 px-4 py-3 text-sm text-slate-800 odd:bg-slate-50"
-                            >
-                                <span className="col-span-2 font-bold">
-                                    #{index + 1}
+                {/* Scores table */}
+                <div className="dd-card" style={{ padding: 20, marginBottom: 16 }}>
+                    <div style={{ fontFamily: 'var(--font-hand)', fontSize: 22, marginBottom: 8 }}>Final scores</div>
+                    <div style={{ maxHeight: 200, overflowY: 'auto', display: 'grid', gap: 6 }}>
+                        {sortedScores.map((p, i) => (
+                            <div key={p.id} style={{
+                                display: 'grid', gridTemplateColumns: '28px 1fr auto',
+                                alignItems: 'center', gap: 10,
+                                padding: '6px 10px', borderRadius: 10,
+                                background: i === 0 ? 'var(--paper-warm)' : 'var(--paper)',
+                                border: '1.5px solid var(--ink-ghost)',
+                            }}>
+                                <span style={{ fontFamily: 'var(--font-hand)', fontSize: 18, color: i === 0 ? 'var(--crayon-sun)' : 'var(--ink-faint)' }}>
+                                    {i === 0 ? '★' : i + 1}
                                 </span>
-                                <span className="col-span-7 font-semibold">
-                                    {player.name}
-                                </span>
-                                <span className="col-span-3 text-right font-bold">
-                                    {player.score ?? 0}
-                                </span>
+                                <span style={{ fontWeight: 800 }}>{p.name}</span>
+                                <span style={{ fontFamily: 'var(--font-hand)', fontSize: 20 }}>{p.score ?? 0}</span>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={() => setCurrentScreen('GAMECONFIG')}
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                    >
-                        Back To Game Config
-                    </button>
-
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                     {isHost ? (
-                        <button
-                            type="button"
-                            onClick={() => void onPlayAgain()}
+                        <button type="button" className="dd-btn dd-btn--primary dd-btn--lg"
                             disabled={isReplaying}
-                            className="rounded-xl border border-cyan-700 bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {isReplaying ? 'Starting...' : 'Play Again'}
+                            onClick={() => void onPlayAgain()}>
+                            {isReplaying ? 'Starting…' : '↻ Play again'}
                         </button>
                     ) : (
-                        <p className="text-sm text-slate-600">
-                            Waiting for host to start the next game.
-                        </p>
+                        <div style={{ fontSize: 14, color: '#fff', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.4)' }}>
+                            Waiting for host to start the next game…
+                        </div>
                     )}
+                    <button type="button" className="dd-btn dd-btn--lg"
+                        onClick={() => setCurrentScreen('GAMECONFIG')}>
+                        🏠 Back home
+                    </button>
                 </div>
-                {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+                {error && <p style={{ color: 'var(--crayon-coral)', fontWeight: 700, textAlign: 'center', marginTop: 10, background: '#fff', padding: '6px 12px', borderRadius: 8 }}>{error}</p>}
             </div>
         </div>
     )

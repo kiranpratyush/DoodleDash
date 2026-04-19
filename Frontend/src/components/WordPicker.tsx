@@ -1,136 +1,129 @@
-import { useState, useEffect } from 'react'
-import { Timer } from './Timer'
+import { useEffect, useState } from 'react'
 import { gameHubService } from '../services/gameHubService'
 import { useGameStore } from '../store/gameStore'
+import { PlayerAvatar } from './doodle'
+import { CenterTape, SketchUnderline } from '../design-system/dd'
 
-export function RoundSplash({ roundNumber }: { roundNumber: number }) {
+function RoundSplash({ roundNumber }: { roundNumber: number }) {
     return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-50 rounded-sm backdrop-blur-sm">
-            <h2 className="text-6xl font-black text-gray-800 animate-pulse drop-shadow-md">
-                Round {roundNumber}
-            </h2>
+        <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(43,42,39,0.6)',
+            zIndex: 20, animation: 'dd-pop-in 280ms var(--ease)',
+        }}>
+            <div className="dd-card pop-in" style={{ padding: 40, textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1.4, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>Get ready</div>
+                <h2 className="dd-title" style={{ fontSize: 64, color: 'var(--crayon-coral)', marginTop: 4 }}>Round {roundNumber}</h2>
+            </div>
         </div>
     )
 }
 
-interface Prop {
+function OverlayShell({ children }: { children: React.ReactNode }) {
+    return (
+        <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(43,42,39,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10, animation: 'dd-pop-in 280ms var(--ease)',
+        }}>
+            {children}
+        </div>
+    )
+}
+
+interface WordPickerProps {
     time: number
     wordOptions: string[]
 }
-interface Prop2 {
-    time: number
-    playerName: string
-}
 
-export function WordPicker({ time, wordOptions }: Prop) {
-    const room = useGameStore((state) => state.roomCode)
-    const currentRound = useGameStore((state) => state.currentRound)
+export function WordPicker({ time, wordOptions }: WordPickerProps) {
+    const room = useGameStore((s) => s.roomCode)
+    const currentRound = useGameStore((s) => s.currentRound)
     const [selectedWord, setSelectedWord] = useState<string | null>(null)
     const [showSplash, setShowSplash] = useState(true)
 
     useEffect(() => {
-        const timer = setTimeout(() => setShowSplash(false), 2000)
-        return () => clearTimeout(timer)
+        const t = setTimeout(() => setShowSplash(false), 2000)
+        return () => clearTimeout(t)
     }, [])
 
-    async function onSelectWord(word: string) {
-        if (selectedWord) {
-            return
-        }
+    if (showSplash) return <RoundSplash roundNumber={currentRound} />
 
+    async function onSelectWord(word: string) {
+        if (selectedWord) return
         setSelectedWord(word)
         await gameHubService.chooseWord(room, word)
     }
 
-    if (showSplash) {
-        return <RoundSplash roundNumber={currentRound} />
-    }
+    const CARD_BG = ['#FFF5EE', '#FFF9E6', '#EEFBF0']
 
     return (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/35 backdrop-blur-[2px] px-4">
-            <div className="w-full max-w-xl rounded-3xl border border-white/50 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
-                <div className="mb-6 flex items-start justify-between gap-4">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-700">
-                            Your Turn
-                        </p>
-                        <h2 className="mt-2 text-3xl font-black text-slate-900">
-                            Choose a word
-                        </h2>
-                        <p className="mt-2 text-sm text-slate-600">
-                            Pick the prompt you want to draw before the timer
-                            runs out.
-                        </p>
-                    </div>
-                    <div className="shrink-0 rounded-full bg-white/80 p-2 shadow-sm">
-                        <Timer timeCount={time} />
-                    </div>
+        <OverlayShell>
+            <div className="dd-card tilt-l" style={{ padding: 36, maxWidth: 600, textAlign: 'center', width: '90%' }}>
+                <CenterTape color="var(--crayon-sun)" />
+                <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1.2, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>Your turn to draw</div>
+                <h2 className="dd-title" style={{ fontSize: 44, marginTop: 4 }}>Pick a word</h2>
+                <SketchUnderline color="var(--crayon-coral)" width={200} style={{ margin: '8px auto 0' }} />
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 26, flexWrap: 'wrap' }}>
+                    {wordOptions.map((w, i) => (
+                        <button key={w} type="button"
+                            className="dd-btn dd-btn--lg pop-in"
+                            onClick={() => void onSelectWord(w)}
+                            disabled={selectedWord !== null}
+                            style={{
+                                background: selectedWord === w ? 'var(--crayon-coral)' : CARD_BG[i % 3],
+                                color: selectedWord === w ? '#fff' : 'var(--ink)',
+                                fontFamily: 'var(--font-hand)', fontSize: 26, minWidth: 150,
+                                animationDelay: `${i * 80}ms`,
+                                opacity: selectedWord && selectedWord !== w ? 0.5 : 1,
+                            }}>
+                            {w}
+                        </button>
+                    ))}
                 </div>
-
-                <div className="grid gap-3">
-                    {wordOptions.map((word, index) => {
-                        const isSelected = selectedWord === word
-
-                        return (
-                            <button
-                                key={index}
-                                type="button"
-                                disabled={selectedWord !== null}
-                                onClick={async () => await onSelectWord(word)}
-                                className={`group w-full rounded-2xl border px-5 py-4 text-left transition duration-200 ${isSelected
-                                    ? 'border-cyan-700 bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
-                                    : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-cyan-400 hover:bg-cyan-50 hover:shadow-md'
-                                    } ${selectedWord && !isSelected ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                            >
-                                <span className="flex items-center justify-between gap-4">
-                                    <span className="text-lg font-semibold capitalize tracking-wide">
-                                        {word}
-                                    </span>
-                                    <span
-                                        className={`text-xs font-bold uppercase tracking-[0.3em] ${isSelected
-                                            ? 'text-cyan-50'
-                                            : 'text-slate-400 transition group-hover:text-cyan-600'
-                                            }`}
-                                    ></span>
-                                </span>
-                            </button>
-                        )
-                    })}
+                <div style={{ marginTop: 20, color: 'var(--ink-faint)', fontSize: 13, fontWeight: 700 }}>
+                    Auto-picking in {time}s…
                 </div>
             </div>
-        </div>
+        </OverlayShell>
     )
 }
 
-export function WaitingForWordToBeChoosen({ time, playerName }: Prop2) {
-    const currentRound = useGameStore((state) => state.currentRound)
+interface WaitingProps {
+    time?: number
+    playerName: string
+}
+
+export function WaitingForWordToBeChoosen({ playerName }: WaitingProps) {
+    const currentRound = useGameStore((s) => s.currentRound)
     const [showSplash, setShowSplash] = useState(true)
 
     useEffect(() => {
-        const timer = setTimeout(() => setShowSplash(false), 2000)
-        return () => clearTimeout(timer)
+        const t = setTimeout(() => setShowSplash(false), 2000)
+        return () => clearTimeout(t)
     }, [])
 
-    if (showSplash) {
-        return <RoundSplash roundNumber={currentRound} />
-    }
+    if (showSplash) return <RoundSplash roundNumber={currentRound} />
 
     return (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/30 backdrop-blur-[2px] px-4">
-            <div className="w-full max-w-md rounded-3xl border border-white/50 bg-white/90 p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
-                <div className="mx-auto mb-4 flex w-fit rounded-full bg-white/80 p-2 shadow-sm">
-                    <Timer timeCount={time} />
+        <OverlayShell>
+            <div className="dd-card" style={{ padding: 36, maxWidth: 480, textAlign: 'center', width: '90%' }}>
+                <div className="wobble" style={{ display: 'inline-block' }}>
+                    <PlayerAvatar seed={playerName} size={88} />
                 </div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-700">
-                    Get Ready
-                </p>
-                <h2 className="mt-3 text-2xl font-black text-slate-900">
-                    {playerName} is choosing a word
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                    The round will begin as soon as the prompt is locked in.
-                </p>
+                <h2 className="dd-title" style={{ fontSize: 36, marginTop: 12 }}><b>{playerName}</b></h2>
+                <div style={{ color: 'var(--ink-soft)', marginTop: 4, fontWeight: 700 }}>is choosing a word…</div>
+                <div style={{ marginTop: 18, display: 'inline-flex', gap: 6 }}>
+                    {[0, 1, 2].map((i) => (
+                        <div key={i} style={{
+                            width: 10, height: 10, borderRadius: '50%', background: 'var(--crayon-coral)',
+                            animation: `dd-float 1.2s ease-in-out ${i * 0.15}s infinite`,
+                        }} />
+                    ))}
+                </div>
             </div>
-        </div>
+        </OverlayShell>
     )
 }

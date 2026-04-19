@@ -17,17 +17,13 @@ export function DoodleDashInput({
 }: DoodleDashInputProps) {
     return (
         <input
-            className={`p-2 border-2 text-lg h-8 rounded-sm inline-block w-full ${
-                disabled
-                    ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
-                    : 'border-emerald-400 outline-emerald-600'
-            }`}
+            className="dd-input"
             type={type}
             placeholder={placeHolder}
             onChange={onChange}
             id={id}
             value={value || ''}
             disabled={disabled}
-        ></input>
+        />
     )
 }
