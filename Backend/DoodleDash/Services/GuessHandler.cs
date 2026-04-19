@@ -12,7 +12,6 @@ namespace DoodleDash.Services
         {
             ChatMessage? chatMessage = null;
             Player? updatedPlayer = null;
-            bool shouldBroadcastChat = false;
             bool shouldBroadcastScore = false;
             bool shouldEndRound = false;
 
@@ -71,11 +70,10 @@ namespace DoodleDash.Services
                 }
 
                 room.ChatMessages.Add(chatMessage);
-                shouldBroadcastChat = true;
                 roomStateStore.SaveRoom(room);
             }
 
-            if (shouldBroadcastChat)
+            if (chatMessage != null)
             {
                 await hubContext.Clients.Group(roomCode).SendAsync("ReceiveChatMessage", chatMessage);
             }

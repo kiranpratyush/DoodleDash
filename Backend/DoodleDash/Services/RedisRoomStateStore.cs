@@ -111,12 +111,23 @@ namespace DoodleDash.Services
                     };
                 }
 
-                if (!string.IsNullOrWhiteSpace(playerId))
+                if (room.HostId == playerId)
                 {
+                    var player = new Player
+                    {
+                        Name = room.HostName,
+                        Id = room.HostId,
+                        ConnectionId = connectionId
+
+                    };
+                    room.Players.Add(playerId, player);
+                    SaveRoom(room);
                     return new RoomStateStoreAddPlayerResult
                     {
-                        Success = false,
-                        ErrorMessage = "Player does not exist in current room"
+                        Success = true,
+                        Player = player,
+                        Room = room,
+                        IsReconnect = false
                     };
                 }
 
