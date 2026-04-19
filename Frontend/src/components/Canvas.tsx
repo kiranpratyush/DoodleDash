@@ -105,8 +105,8 @@ export function Canvas(prop: Props) {
         const containerElement = containerRef.current
         const canvasElement = canvasRef.current
         if (!containerElement || !canvasElement) return
-        const render =  canvasRef.current?.getContext("2d")
-        if(render) contextRef.current = render
+        const render = canvasRef.current?.getContext('2d')
+        if (render) contextRef.current = render
         const { width: containerWidth, height: containerHeight } =
             containerElement.getBoundingClientRect()
         setupResponsiveCanvas(canvasElement, containerWidth, containerHeight)
@@ -128,8 +128,8 @@ export function Canvas(prop: Props) {
             draw(
                 { x: point.x0, y: point.y0 },
                 { x: point.x1, y: point.y1 },
-                point.color,
-                point.brushSize
+                'red',
+                10
             )
         })
         return () => {
@@ -163,7 +163,8 @@ export function Canvas(prop: Props) {
         <div
             ref={containerRef}
             style={{
-                height: '100%', width: '100%',
+                height: '100%',
+                width: '100%',
                 background: '#fff',
                 border: '3px solid var(--ink)',
                 borderRadius: 'var(--r-lg)',
