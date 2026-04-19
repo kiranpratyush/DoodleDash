@@ -97,6 +97,10 @@ namespace DoodleDash.Models
 
         public Player? ActivePlayer { get; set; }
 
+        public List<string> CurrentRoundDrawerIds { get; set; } = [];
+
+        public int CurrentDrawerIndex { get; set; } = 0;
+
         public bool IsExpired { get; set; } = false;
 
         public GameStatus Status { get; set; } = GameStatus.Lobby;
