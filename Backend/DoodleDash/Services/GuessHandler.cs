@@ -10,18 +10,18 @@ namespace DoodleDash.Services
 
         public async Task OnGuess(string roomCode, string playerId, string connectionId, string guessText)
         {
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-                return;
-
             ChatMessage? chatMessage = null;
             Player? updatedPlayer = null;
-            bool shouldBroadcastChat = false;
             bool shouldBroadcastScore = false;
             bool shouldEndRound = false;
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
+                if (roomLock == null)
+                    return;
+
+                var room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
                     return;
 
                 if (room.Status != GameStatus.Drawing)
@@ -33,10 +33,7 @@ namespace DoodleDash.Services
                 if (room.ActivePlayer != null && room.ActivePlayer.Id == playerId)
                     return;
 
-                if (room.CurrentWord == null)
-                    return;
-
-                if (room.GuessedPlayerIds.Contains(playerId))
+                if (room.CurrentWord == null || room.GuessedPlayerIds.Contains(playerId))
                     return;
 
                 var normalizedGuess = NormalizeText(guessText);
@@ -73,10 +70,10 @@ namespace DoodleDash.Services
                 }
 
                 room.ChatMessages.Add(chatMessage);
-                shouldBroadcastChat = true;
+                roomStateStore.SaveRoom(room);
             }
 
-            if (shouldBroadcastChat && chatMessage != null)
+            if (chatMessage != null)
             {
                 await hubContext.Clients.Group(roomCode).SendAsync("ReceiveChatMessage", chatMessage);
             }
@@ -100,6 +97,7 @@ namespace DoodleDash.Services
                 if (char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch))
                     builder.Append(ch);
             }
+
             return string.Join(' ', builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
         }
     }

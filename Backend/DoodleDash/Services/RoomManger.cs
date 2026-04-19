@@ -2,37 +2,36 @@ using DoodleDash.Hubs;
 using DoodleDash.Models;
 using DoodleDash.Utils;
 using Microsoft.AspNetCore.SignalR;
-using System.Collections.Concurrent;
 
 namespace DoodleDash.Services
 {
     partial class RoomManager : IRoomManager
     {
-        private readonly ConcurrentDictionary<string, GameRoom> Rooms = new();
-        private readonly ConcurrentDictionary<string, List<List<float>>> CanvasHistory = new();
-        private readonly ConcurrentDictionary<string, object> roomLocks = new();
         private readonly IHubContext<DoodleDashHub> hubContext;
+        private readonly IRoomStateStore roomStateStore;
         private const int DefaultWordSelectionSeconds = 20;
 
-        public RoomManager(IHubContext<DoodleDashHub> hubContext)
+        public RoomManager(IHubContext<DoodleDashHub> hubContext, IRoomStateStore roomStateStore)
         {
             this.hubContext = hubContext;
-
+            this.roomStateStore = roomStateStore;
         }
-        private object GetRoomLock(string roomCode) =>
-            roomLocks.GetOrAdd(roomCode, _ => new object());
+
+        public GameRoom? GetRoom(string roomCode) => roomStateStore.GetRoom(roomCode);
 
         public GameRoom? CreateRoom(CreateRoomRequest roomRequest)
         {
             int retryCount = 0;
-            int MAX_RETRY_COUNT = 3;
-            while (retryCount < MAX_RETRY_COUNT)
+            const int MaxRetryCount = 3;
+
+            while (retryCount < MaxRetryCount)
             {
                 var roomCode = CodeGenerator.Generate();
                 var hostId = Guid.NewGuid().ToString();
                 var words = roomRequest.CustomWords.Count > 0
                     ? roomRequest.CustomWords
                     : DefaultWords.GetRandomWords(30);
+
                 var room = new GameRoom
                 {
                     Status = GameStatus.Lobby,
@@ -45,96 +44,36 @@ namespace DoodleDash.Services
                     DrawTimeSeconds = roomRequest.DrawTimeSeconds,
                     WordSelectionSeconds = DefaultWordSelectionSeconds
                 };
-                if (Rooms.TryAdd(roomCode, room)) return room;
+
+                if (roomStateStore.TryCreateRoom(room))
+                {
+                    return room;
+                }
+
                 retryCount++;
             }
+
             return null;
         }
 
         public RoomSnapShotResponse TryAddPlayer(string roomCode, string playerName, string connectionId, string? playerId)
         {
-            var roomResponse = new RoomSnapShotResponse();
-
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
+            var storeResponse = roomStateStore.TryAddOrReconnectPlayer(roomCode, playerName, connectionId, playerId);
+            var roomResponse = new RoomSnapShotResponse
             {
-                roomResponse.ErrorMessage = "Room not found";
-                roomResponse.Success = false;
+                Success = storeResponse.Success,
+                ErrorCode = storeResponse.ErrorCode,
+                ErrorMessage = storeResponse.ErrorMessage,
+                Player = storeResponse.Player,
+                IsReconnect = storeResponse.IsReconnect
+            };
+
+            if (!storeResponse.Success || storeResponse.Room == null)
+            {
+                return roomResponse;
             }
 
-            lock (GetRoomLock(roomCode))
-            {
-                if (!Rooms.TryGetValue(roomCode, out room))
-                {
-                    roomResponse.ErrorMessage = "Room not found";
-                    roomResponse.Success = false;
-                }
-                else if (room != null && (room.IsExpired || room.Players.Count >= room.MaxPlayerCount))
-                {
-                    roomResponse.ErrorMessage = "Room is full or expired";
-                    roomResponse.Success = false;
-                }
-                else if (playerId != null && room != null && room.HostId != playerId)
-                {
-                    roomResponse.ErrorMessage = "Player does not exist in current room";
-                    roomResponse.Success = false;
-                }
-                else
-                {
-                    playerId ??= Guid.NewGuid().ToString();
-                    var player = new Player
-                    {
-                        Id = playerId,
-                        Name = playerName,
-                        Score = 0,
-                        ConnectionId = connectionId
-
-                    };
-                    if (!room!.Players.TryAdd(player.Id, player))
-                    {
-                        roomResponse.ErrorMessage = "Failed to add player to room";
-                        roomResponse.Success = false;
-                    }
-                    else
-                    {
-                        roomResponse.Success = true;
-                    }
-                    roomResponse.Player = player;
-                    var snapshot = new GameSnapShotResponse
-                    {
-                        Status = room.Status,
-                        HostId = room.HostId,
-                        LobbyMessage = room.LobbyMessage,
-                        RoundNumber = room.CurrentRound,
-                        TotalRounds = room.TotalRounds,
-                        DrawTimeSeconds = room.DrawTimeSeconds,
-                        ChatMessages = room.ChatMessages,
-                        Players = [.. room.Players.Values],
-                        ActivePlayer = room.ActivePlayer
-                    };
-
-                    if (room.Status == GameStatus.SelectingWord)
-                    {
-                        snapshot.SelectionEndTime = room.SelectionEndTime;
-                    }
-                    else if (room.Status == GameStatus.Drawing)
-                    {
-                        snapshot.RoundEndTime = room.RoundEndTime;
-                        snapshot.CurrentWordHint = room.CurrentWordHint;
-                        snapshot.DrawData = CanvasHistory.GetOrAdd(roomCode, _ => new List<List<float>>());
-                    }
-                    else if (room.Status == GameStatus.RoundEnded)
-                    {
-                        snapshot.LastRoundResult = room.LastRoundResult;
-                    }
-                    else if (room.Status == GameStatus.GameEnded)
-                    {
-                        snapshot.FinalResult = room.FinalResult;
-                    }
-
-                    roomResponse.SnapShotResponse = snapshot;
-                }
-
-            }
+            roomResponse.SnapShotResponse = BuildSnapshot(storeResponse.Room);
             return roomResponse;
         }
 
@@ -142,30 +81,39 @@ namespace DoodleDash.Services
         {
             List<string> wordOptions = [];
             string? selectionEndTime = null;
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-                return;
-            lock (GetRoomLock(roomCode))
+            GameRoom? room = null;
+
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out room))
+                if (roomLock == null)
                     return;
-                if (room.Players.Count < 2 || room.Status != GameStatus.Lobby)
+
+                room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.Players.Count < 2 || room.Status != GameStatus.Lobby)
                     return;
+
                 room.Status = GameStatus.SelectingWord;
+                room.CurrentRound = 1;
                 room.SelectionEndTime = DateTime.UtcNow.AddSeconds(room.WordSelectionSeconds).ToString("o");
                 room.LastRoundResult = null;
                 room.FinalResult = null;
-                wordOptions = SendChooseWord(room);
+                InitializeRoundDrawers(room);
+                wordOptions = PrepareWordSelection(room);
                 selectionEndTime = room.SelectionEndTime;
+                roomStateStore.SaveRoom(room);
             }
 
-            if (room != null && room.ActivePlayer != null)
+            if (room.ActivePlayer != null)
             {
-                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId).SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds, room.CurrentRound);
-                await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId).SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name, room.DrawTimeSeconds, room.CurrentRound);
+                await hubContext.Clients.Client(room.ActivePlayer.ConnectionId)
+                    .SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds, room.CurrentRound);
+                await hubContext.Clients.GroupExcept(roomCode, room.ActivePlayer.ConnectionId)
+                    .SendAsync("GameStarted", room.ActivePlayer.Id, room.ActivePlayer.Name, room.DrawTimeSeconds, room.CurrentRound);
             }
+
             if (selectionEndTime != null)
             {
-                _ = ScheduleSelectionTimeout(roomCode, DateTime.Now.AddSeconds(5000).ToUniversalTime().ToString());
+                _ = ScheduleSelectionTimeout(roomCode, selectionEndTime);
             }
         }
 
@@ -174,26 +122,26 @@ namespace DoodleDash.Services
             List<Player> resetPlayers = [];
             bool shouldStartGame = false;
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out GameRoom? room) || room == null || room.IsExpired)
+                if (roomLock == null)
+                    return;
+
+                var room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
                     return;
 
                 if (!room.Players.TryGetValue(playerId, out var player))
                     return;
 
-                if (player.ConnectionId != connectionId)
-                    return;
-
-                if (room.HostId != playerId)
-                    return;
-
-                if (room.Status != GameStatus.GameEnded)
+                if (player.ConnectionId != connectionId || room.HostId != playerId || room.Status != GameStatus.GameEnded)
                     return;
 
                 room.Status = GameStatus.Lobby;
                 room.CurrentRound = 1;
                 room.ActivePlayer = null;
+                room.CurrentRoundDrawerIds.Clear();
+                room.CurrentDrawerIndex = 0;
                 room.CurrentWord = null;
                 room.CurrentWordHint = null;
                 room.RoundEndTime = null;
@@ -201,6 +149,7 @@ namespace DoodleDash.Services
                 room.CurrentWordOptions = [];
                 room.GuessedPlayerIds.Clear();
                 room.ChatMessages.Clear();
+                room.DrawData.Clear();
                 room.LastRoundResult = null;
                 room.FinalResult = null;
 
@@ -210,8 +159,8 @@ namespace DoodleDash.Services
                     resetPlayers.Add(existingPlayer);
                 }
 
-                CanvasHistory.TryRemove(roomCode, out _);
                 shouldStartGame = room.Players.Count >= 2;
+                roomStateStore.SaveRoom(room);
             }
 
             await hubContext.Clients.Group(roomCode).SendAsync("ReplayStarted");
@@ -229,35 +178,18 @@ namespace DoodleDash.Services
 
         public Player? TryRemovePlayer(string roomCode, string playerId)
         {
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-                return null;
-
-            lock (GetRoomLock(roomCode))
-            {
-                if (!Rooms.TryGetValue(roomCode, out room))
-                    return null;
-
-                Player? removed;
-                if (room.Players.TryRemove(playerId, out removed))
-                {
-                    return removed;
-                }
-                return null;
-            }
+            return roomStateStore.TryRemovePlayer(roomCode, playerId);
         }
 
         public async Task OnRoundOver(string roomCode)
         {
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-            {
-                return;
-            }
+            var room = roomStateStore.GetRoom(roomCode);
             if (room == null || room.IsExpired)
             {
                 return;
             }
 
-            RoundOverResponse response = new() { };
+            RoundOverResponse response = new();
             string? activePlayerConnectionId = null;
             List<string>? wordOptions = null;
             string? activePlayerId = null;
@@ -265,12 +197,17 @@ namespace DoodleDash.Services
             bool shouldStartNextRound = false;
             bool shouldEndGame = false;
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
-                {
+                if (roomLock == null)
                     return;
-                }
+
+                room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
+                    return;
+
+                if (room.Status != GameStatus.Drawing)
+                    return;
 
                 room.Status = GameStatus.RoundEnded;
                 response.Success = true;
@@ -280,48 +217,79 @@ namespace DoodleDash.Services
                 {
                     response.Players.Add(player);
                 }
+
                 room.LastRoundResult = response;
+                roomStateStore.SaveRoom(room);
             }
             await hubContext.Clients.Group(roomCode).SendAsync("RoundOver", response);
 
             await Task.Delay(5000);
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
-                {
+                if (roomLock == null)
                     return;
-                }
 
-                if (room.CurrentRound < room.TotalRounds)
+                room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
+                    return;
+
+                if (room.Status != GameStatus.RoundEnded)
+                    return;
+
+                if (MoveToNextActiveDrawer(room))
+                {
+                    room.Status = GameStatus.SelectingWord;
+                    room.CurrentWord = null;
+                    room.CurrentWordHint = null;
+                    room.RoundEndTime = null;
+                    room.SelectionEndTime = DateTime.UtcNow.AddSeconds(room.WordSelectionSeconds).ToString("o");
+                    room.LastRoundResult = null;
+                    room.DrawData.Clear();
+
+                    wordOptions = PrepareWordSelection(room);
+                    activePlayerConnectionId = room.ActivePlayer?.ConnectionId;
+                    activePlayerId = room.ActivePlayer?.Id;
+                    activePlayerName = room.ActivePlayer?.Name;
+                    shouldStartNextRound = true;
+                    roomStateStore.SaveRoom(room);
+                }
+                else if (room.CurrentRound < room.TotalRounds)
                 {
                     room.CurrentRound++;
                     room.Status = GameStatus.SelectingWord;
                     room.CurrentWord = null;
                     room.CurrentWordHint = null;
+                    room.RoundEndTime = null;
                     room.SelectionEndTime = DateTime.UtcNow.AddSeconds(room.WordSelectionSeconds).ToString("o");
                     room.LastRoundResult = null;
+                    room.DrawData.Clear();
+                    InitializeRoundDrawers(room);
 
-                    CanvasHistory.TryRemove(roomCode, out _);
-
-                    wordOptions = SendChooseWord(room);
+                    wordOptions = PrepareWordSelection(room);
                     activePlayerConnectionId = room.ActivePlayer?.ConnectionId;
                     activePlayerId = room.ActivePlayer?.Id;
                     activePlayerName = room.ActivePlayer?.Name;
-                    shouldStartNextRound = true;
+                    shouldStartNextRound = activePlayerConnectionId != null;
+                    shouldEndGame = activePlayerConnectionId == null;
+                    roomStateStore.SaveRoom(room);
                 }
                 else
                 {
                     shouldEndGame = true;
                 }
             }
+
             if (shouldStartNextRound && activePlayerConnectionId != null)
             {
-                await hubContext.Clients.Client(activePlayerConnectionId).SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds, room.CurrentRound);
-                await hubContext.Clients.GroupExcept(roomCode, activePlayerConnectionId).SendAsync("GameStarted", activePlayerId, activePlayerName, room.DrawTimeSeconds, room.CurrentRound);
-                if (room != null)
+                await hubContext.Clients.Client(activePlayerConnectionId)
+                    .SendAsync("StartWordSelection", wordOptions, room.DrawTimeSeconds, room.CurrentRound);
+                await hubContext.Clients.GroupExcept(roomCode, activePlayerConnectionId)
+                    .SendAsync("GameStarted", activePlayerId, activePlayerName, room.DrawTimeSeconds, room.CurrentRound);
+
+                if (room.SelectionEndTime != null)
                 {
-                    _ = ScheduleSelectionTimeout(roomCode, DateTime.Now.AddSeconds(5000).ToUniversalTime().ToString());
+                    _ = ScheduleSelectionTimeout(roomCode, room.SelectionEndTime);
                 }
             }
             else if (shouldEndGame)
@@ -334,10 +302,7 @@ namespace DoodleDash.Services
 
         private async Task OnGameOver(string roomCode)
         {
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-            {
-                return;
-            }
+            var room = roomStateStore.GetRoom(roomCode);
             if (room == null || room.IsExpired)
             {
                 return;
@@ -345,12 +310,14 @@ namespace DoodleDash.Services
 
             GameOverResponse response = new();
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
-                {
+                if (roomLock == null)
                     return;
-                }
+
+                room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
+                    return;
 
                 room.Status = GameStatus.GameEnded;
 
@@ -361,19 +328,61 @@ namespace DoodleDash.Services
                 response.FinalScores = sortedPlayers;
                 response.Winner = sortedPlayers.FirstOrDefault();
                 room.FinalResult = response;
+                roomStateStore.SaveRoom(room);
             }
+
             await hubContext.Clients.Group(roomCode).SendAsync("GameOver", response);
         }
-        private static List<string> SendChooseWord(GameRoom room)
+
+        private static void InitializeRoundDrawers(GameRoom room)
         {
-            IEnumerable<string> wordOptions;
-            wordOptions = Random.Shared.GetItems(room.CustomWords.ToArray(), 3);
-            var randomPlayer = room.Players.Values.ElementAt(Random.Shared.Next(room.Players.Count));
-            room.ActivePlayer = randomPlayer;
+            room.CurrentRoundDrawerIds = [.. room.Players.Keys];
+            room.CurrentDrawerIndex = 0;
+        }
+
+        private static bool MoveToNextActiveDrawer(GameRoom room)
+        {
+            var nextDrawerIndex = room.CurrentDrawerIndex + 1;
+            while (nextDrawerIndex < room.CurrentRoundDrawerIds.Count)
+            {
+                var playerId = room.CurrentRoundDrawerIds[nextDrawerIndex];
+                if (room.Players.ContainsKey(playerId))
+                {
+                    room.CurrentDrawerIndex = nextDrawerIndex;
+                    return true;
+                }
+
+                nextDrawerIndex++;
+            }
+
+            return false;
+        }
+
+        private static List<string> PrepareWordSelection(GameRoom room)
+        {
+            var wordOptions = Random.Shared.GetItems(room.CustomWords.ToArray(), 3);
+            room.ActivePlayer = GetCurrentDrawer(room);
             var optionsList = wordOptions.ToList();
             room.CurrentWordOptions = optionsList;
             return optionsList;
         }
+
+        private static Player? GetCurrentDrawer(GameRoom room)
+        {
+            while (room.CurrentDrawerIndex < room.CurrentRoundDrawerIds.Count)
+            {
+                var playerId = room.CurrentRoundDrawerIds[room.CurrentDrawerIndex];
+                if (room.Players.TryGetValue(playerId, out var player))
+                {
+                    return player;
+                }
+
+                room.CurrentDrawerIndex++;
+            }
+
+            return null;
+        }
+
         private async Task ScheduleSelectionTimeout(string roomCode, string expectedSelectionEndTime)
         {
             if (!DateTime.TryParse(expectedSelectionEndTime, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var endTime))
@@ -391,9 +400,13 @@ namespace DoodleDash.Services
             string? connectionId = null;
             string? chosenWord = null;
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out var room) || room.IsExpired)
+                if (roomLock == null)
+                    return;
+
+                var room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
                     return;
 
                 if (room.Status != GameStatus.SelectingWord || room.SelectionEndTime != expectedSelectionEndTime)
@@ -411,6 +424,43 @@ namespace DoodleDash.Services
             {
                 await OnWordChosen(roomCode, playerId, connectionId, chosenWord);
             }
+        }
+
+        private GameSnapShotResponse BuildSnapshot(GameRoom room)
+        {
+            var snapshot = new GameSnapShotResponse
+            {
+                Status = room.Status,
+                HostId = room.HostId,
+                LobbyMessage = room.LobbyMessage,
+                RoundNumber = room.CurrentRound,
+                TotalRounds = room.TotalRounds,
+                DrawTimeSeconds = room.DrawTimeSeconds,
+                ChatMessages = room.ChatMessages,
+                Players = [.. room.Players.Values],
+                ActivePlayer = room.ActivePlayer
+            };
+
+            if (room.Status == GameStatus.SelectingWord)
+            {
+                snapshot.SelectionEndTime = room.SelectionEndTime;
+            }
+            else if (room.Status == GameStatus.Drawing)
+            {
+                snapshot.RoundEndTime = room.RoundEndTime;
+                snapshot.CurrentWordHint = room.CurrentWordHint;
+                snapshot.DrawData = room.DrawData;
+            }
+            else if (room.Status == GameStatus.RoundEnded)
+            {
+                snapshot.LastRoundResult = room.LastRoundResult;
+            }
+            else if (room.Status == GameStatus.GameEnded)
+            {
+                snapshot.FinalResult = room.FinalResult;
+            }
+
+            return snapshot;
         }
         #endregion
     }

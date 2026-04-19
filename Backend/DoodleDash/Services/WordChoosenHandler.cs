@@ -9,18 +9,19 @@ namespace DoodleDash.Services
 
         public async Task OnWordChosen(string roomCode, string playerId, string connectionId, string chosenWord)
         {
-            if (!Rooms.TryGetValue(roomCode, out GameRoom? room))
-                return;
-
             RoundStartedResponse response = new();
             RoundStartedResponse? activePlayerResponse = null;
             string? expectedRoundEndTime = null;
             bool shouldStartRound = false;
             string? activePlayerConnectionId = null;
 
-            lock (GetRoomLock(roomCode))
+            using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
             {
-                if (!Rooms.TryGetValue(roomCode, out room) || room == null || room.IsExpired)
+                if (roomLock == null)
+                    return;
+
+                var room = roomStateStore.GetRoom(roomCode);
+                if (room == null || room.IsExpired)
                     return;
 
                 if (room.Status != GameStatus.SelectingWord)
@@ -42,6 +43,7 @@ namespace DoodleDash.Services
                 room.GuessedPlayerIds.Clear();
                 room.CurrentWordOptions = [];
                 room.LastRoundResult = null;
+                room.DrawData.Clear();
 
                 response.Success = true;
                 response.ActivePlayer = room.ActivePlayer;
@@ -49,7 +51,6 @@ namespace DoodleDash.Services
                 response.RoundEndTime = room.RoundEndTime;
                 response.RoundNumber = room.CurrentRound;
                 response.RoundDrawTimeSeconds = room.DrawTimeSeconds;
-
 
                 activePlayerResponse = new RoundStartedResponse
                 {
@@ -65,6 +66,7 @@ namespace DoodleDash.Services
                 activePlayerConnectionId = room.ActivePlayer.ConnectionId;
                 expectedRoundEndTime = room.RoundEndTime;
                 shouldStartRound = true;
+                roomStateStore.SaveRoom(room);
             }
 
             if (shouldStartRound)
@@ -74,6 +76,7 @@ namespace DoodleDash.Services
                     await hubContext.Clients.Client(activePlayerConnectionId).SendAsync("RoundStarted", activePlayerResponse);
                     await hubContext.Clients.GroupExcept(roomCode, [activePlayerConnectionId]).SendAsync("RoundStarted", response);
                 }
+
                 if (expectedRoundEndTime != null)
                 {
                     _ = ScheduleRoundTimeout(roomCode, expectedRoundEndTime);
@@ -84,16 +87,18 @@ namespace DoodleDash.Services
 
         private static WordHint BuildInitialHint(string word)
         {
-            var RevealedIndices = word
-                .Select((ch, index) => new Hint { Character =ch, Index = index })
+            var revealedIndices = word
+                .Select((ch, index) => new Hint { Character = ch, Index = index })
                 .Where(x => x.Character == ' ')
                 .ToList();
+
             return new WordHint
             {
                 Length = word.Length,
-                RevealedIndices = RevealedIndices
+                RevealedIndices = revealedIndices
             };
         }
+
         private async Task ScheduleRoundTimeout(string roomCode, string expectedRoundEndTime)
         {
             if (!DateTime.TryParse(expectedRoundEndTime, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var endTime))
@@ -107,14 +112,12 @@ namespace DoodleDash.Services
 
             await Task.Delay(delay);
 
-            lock (GetRoomLock(roomCode))
-            {
-                if (!Rooms.TryGetValue(roomCode, out var room) || room.IsExpired)
-                    return;
+            var room = roomStateStore.GetRoom(roomCode);
+            if (room == null || room.IsExpired)
+                return;
 
-                if (room.Status != GameStatus.Drawing || room.RoundEndTime != expectedRoundEndTime)
-                    return;
-            }
+            if (room.Status != GameStatus.Drawing || room.RoundEndTime != expectedRoundEndTime)
+                return;
 
             await OnRoundOver(roomCode);
         }
@@ -132,42 +135,47 @@ namespace DoodleDash.Services
 
                 WordHint? updatedHint = null;
 
-                lock (GetRoomLock(roomCode))
+                using (var roomLock = roomStateStore.AcquireRoomLock(roomCode))
                 {
-                    if (!Rooms.TryGetValue(roomCode, out var room) || room.IsExpired)
+                    if (roomLock == null)
+                        return;
+
+                    var room = roomStateStore.GetRoom(roomCode);
+                    if (room == null || room.IsExpired)
                         return;
 
                     if (room.Status != GameStatus.Drawing || room.RoundEndTime != expectedRoundEndTime)
                         return;
 
-                    if (room.CurrentWord != null && room.CurrentWordHint != null)
+                    if (room.CurrentWord == null || room.CurrentWordHint == null)
+                        continue;
+
+                    var revealedCount = room.CurrentWordHint.RevealedIndices.Count(h => h.Character != ' ');
+                    if (revealedCount >= GameConstants.MaxHintsPerRound)
                     {
-                        var revealedCount = room.CurrentWordHint.RevealedIndices.Count(h => h.Character != ' ');
-                        if (revealedCount >= GameConstants.MaxHintsPerRound)
-                        {
-                            return; // Stop timer if we've reached the max hints
-                        }
-
-                        var revealedIndices = room.CurrentWordHint.RevealedIndices.Select(h => h.Index);
-                        var hiddenIndices = Enumerable.Range(0, room.CurrentWord.Length)
-                            .Where(i => room.CurrentWord[i] != ' ')
-                            .Except(revealedIndices)
-                            .ToList();
-
-                        if (hiddenIndices.Count > 1) 
-                        {
-                            int randPos = new Random().Next(hiddenIndices.Count);
-                            int randomIndex = hiddenIndices[randPos];
-                            
-                            var newHint = new Hint { Character = room.CurrentWord[randomIndex], Index = randomIndex };
-                            room.CurrentWordHint.RevealedIndices.Add(newHint);
-                            updatedHint = room.CurrentWordHint;
-                        }
-                        else
-                        {
-                            return; 
-                        }
+                        return;
                     }
+
+                    var revealedIndices = room.CurrentWordHint.RevealedIndices.Select(h => h.Index);
+                    var hiddenIndices = Enumerable.Range(0, room.CurrentWord.Length)
+                        .Where(i => room.CurrentWord[i] != ' ')
+                        .Except(revealedIndices)
+                        .ToList();
+
+                    if (hiddenIndices.Count <= 1)
+                    {
+                        return;
+                    }
+
+                    var randomIndex = hiddenIndices[new Random().Next(hiddenIndices.Count)];
+                    room.CurrentWordHint.RevealedIndices.Add(new Hint
+                    {
+                        Character = room.CurrentWord[randomIndex],
+                        Index = randomIndex
+                    });
+
+                    updatedHint = room.CurrentWordHint;
+                    roomStateStore.SaveRoom(room);
                 }
 
                 if (updatedHint != null)

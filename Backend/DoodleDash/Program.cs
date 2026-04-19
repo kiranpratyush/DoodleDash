@@ -1,6 +1,8 @@
 
 using DoodleDash.Hubs;
+using DoodleDash.Models;
 using DoodleDash.Services;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,14 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddHealthChecks();
 
+builder.Services.Configure<RedisRoomOptions>(builder.Configuration.GetSection(RedisRoomOptions.SectionName));
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+{
+    var redisOptions = builder.Configuration.GetSection(RedisRoomOptions.SectionName).Get<RedisRoomOptions>()
+        ?? new RedisRoomOptions();
+    return ConnectionMultiplexer.Connect(redisOptions.ConnectionString);
+});
+builder.Services.AddSingleton<IRoomStateStore, RedisRoomStateStore>();
 builder.Services.AddSingleton<IRoomManager, RoomManager>();
 
 if (builder.Environment.IsDevelopment())
